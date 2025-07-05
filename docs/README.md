@@ -138,9 +138,21 @@ fastapi run simultons/simulation.py
 
 To watch the simulton processes:
 
-1. use `ps` to identify the pid of the shell;
+1. use `ps` or better yet `echo $$` to identify the pid of the shell;
 2. then
 
 ```
 watch -c -n 0.1  pstree -p <pid> -Ut
 ```
+
+### Troubleshooting
+
+If you get
+```
+[Errno 98] error while attempting to bind on address ('127.0.0.1', 9000): address already in use
+```
+use
+```
+lsof -i :9000
+```
+to identify the pid of the process and then just kill it.
