@@ -1,28 +1,33 @@
-'''
+"""
 FastAPI process launcher
-'''
+"""
+
 import os
 import signal
 import subprocess
 import time
-from typing import Any, Dict, Optional
+from pathlib import Path
+from typing import Any
+
 import httpx
+
 from . import rest_client
 
 
 class FastLauncher:
-    '''
+    """
     FastAPI Service Launcher
-    '''
+    """
 
     def __init__(self, path: str, port: int) -> None:
-        '''
+        """
+        Constructor.
         path - to the python file which has FastAPI global app defined
-        '''
+        """
         self._host = '127.0.0.1'
         self._path = path
         self._port = port
-        self._popen: Optional[subprocess.Popen] = None
+        self._popen: subprocess.Popen | None = None
         #
         # control REST client verbosity
         #
@@ -33,36 +38,45 @@ class FastLauncher:
 
     @property
     def host(self) -> str:
-        '_host accessor'
+        """Host accessor"""
         return self._host
 
     @property
     def port(self) -> int:
-        '_port accessor'
+        """Port accessor."""
         return self._port
 
-    def launch(self, stdout=subprocess.PIPE, stderr=subprocess.PIPE) -> int:
-        '''
-        start the FastAPI service process, returns service process pid
-        '''
-        parent_dir = os.path.abspath(
-            os.path.dirname(os.path.realpath(__file__)) + '/..')
+    def launch(self, stdout=subprocess.PIPE, stderr=subprocess.PIPE) -> int:  # noqa: ANN001
+        """
+        Start the FastAPI service process, returns service process pid
+        """
+        # parent_dir = os.path.abspath(
+        #    os.path.dirname(os.path.realpath(__file__)) + '/..')
+        parent_dir = Path(__file__).absolute().parents[1]
         command_line = [
-            'fastapi', 'run', '--host', self._host,
-            '--port', str(self._port), '--workers', str(1), self._path
+            'fastapi',
+            'run',
+            '--host',
+            self._host,
+            '--port',
+            str(self._port),
+            '--workers',
+            str(1),
+            self._path,
         ]
         print('command_line:', command_line)
-        self._popen = subprocess.Popen(
-            command_line, cwd=parent_dir, stdout=stdout, stderr=stderr,
-            text=True)
+        self._popen = subprocess.Popen(  # noqa: S603
+            command_line, cwd=parent_dir, stdout=stdout, stderr=stderr, text=True
+        )
         return self._popen.pid
 
     def wait_until_reachable(
-            self, health_uri: str, timeout: int) -> Optional[Dict[str, Any]]:
-        '''
-        give some room for the process to start.
+        self, health_uri: str, timeout: int
+    ) -> dict[str, Any] | None:
+        """
+        Give some room for the process to start.
         Returns a JSON produced by health_uri
-        '''
+        """
         url = f'http://{self._host}:{self._port}{health_uri}'
         start = time.time()
         time_to_timeout = start + timeout
@@ -72,9 +86,11 @@ class FastLauncher:
             try:
                 self._popen.wait(0.2)
                 # if we are here, this means the process has terminated
-                print(f'\nwait_until_reachable({url}, {timeout}) => None,'
-                      f' after {time.time()-start:.2f} secs,'
-                      ' process terminated')
+                print(
+                    f'\nwait_until_reachable({url}, {timeout}) => None,'
+                    f' after {time.time() - start:.2f} secs,'
+                    ' process terminated'
+                )
                 return None
 
             except subprocess.TimeoutExpired:
@@ -88,12 +104,13 @@ class FastLauncher:
                     jres = x.json()
                     print(
                         f'\nwait_until_reachable({url}, {timeout}) => {jres},'
-                        f' after {time.time()-start:.2f} secs')
+                        f' after {time.time() - start:.2f} secs'
+                    )
                     return jres
 
             except httpx.ConnectError:
                 print('.', end='', flush=True)
-                pass
+                # pass
 
         print(f'\nwait_until_reachable({url}, {timeout}) => None')
         return None
@@ -101,32 +118,39 @@ class FastLauncher:
     def wait_to_die(self, timeout: float = 0.5) -> bool:
         assert self._popen is not None
         if self._popen.returncode is not None:
-            print(f'Process {self._popen.pid} already terminated with ec:',
-                  self._popen.returncode)
+            print(
+                f'Process {self._popen.pid} already terminated with ec:',
+                self._popen.returncode,
+            )
             return True
         #
         # wait for the process to actually terminate
         #
-        print('Waiting for upto', timeout, 'secs for', self._popen.pid,
-              'to die...')
+        print('Waiting for upto', timeout, 'secs for', self._popen.pid, 'to die...')
         start = time.time()
         try:
             self._popen.wait(timeout)
             # the process has terminated
             elapsed = time.time() - start
-            print(self._popen.pid, 'died after',  f'{elapsed:.3f}',
-                  'secs, ec:', self._popen.returncode)
+            print(
+                self._popen.pid,
+                'died after',
+                f'{elapsed:.3f}',
+                'secs, ec:',
+                self._popen.returncode,
+            )
             return True
 
         except subprocess.TimeoutExpired:
-            print(f'Waiting for {self._popen.pid} to die timed out after',
-                  timeout, 'secs')
+            print(
+                f'Waiting for {self._popen.pid} to die timed out after', timeout, 'secs'
+            )
         return False
 
     def shutdown(self, timeout: float = 0.5) -> bool:
-        '''
+        """
         Stop the FastAPI service process
-        '''
+        """
         assert self._popen is not None
         if self._popen.returncode is None:
             try:
@@ -147,17 +171,30 @@ class FastLauncher:
         try:
             stdout_value, stderr_value = self._popen.communicate()
         except Exception as err:
-            print('Caught while tying to communicate with', self._popen.pid,
-                  err)
+            print('Caught while tying to communicate with', self._popen.pid, err)
         dashes = '==========================='
         output_produced = False
         if stdout_value:
-            print(dashes, self._path, self._popen.pid, 'stdout', dashes, '\n',
-                  stdout_value)
+            print(
+                dashes,
+                self._path,
+                self._popen.pid,
+                'stdout',
+                dashes,
+                '\n',
+                stdout_value,
+            )
             output_produced = True
         if stderr_value:
-            print(dashes, self._path, self._popen.pid, 'stderr', dashes, '\n',
-                  stderr_value)
+            print(
+                dashes,
+                self._path,
+                self._popen.pid,
+                'stderr',
+                dashes,
+                '\n',
+                stderr_value,
+            )
             output_produced = True
         if output_produced:
             print(dashes, self._path, self._popen.pid, 'end', dashes)
@@ -167,17 +204,19 @@ class FastLauncher:
         self._restc = None
         return res
 
-    def get_rest_client(self, verbose: bool, dumpHeaders: bool):
+    def get_rest_client(self, verbose: bool, dumpHeaders: bool) -> rest_client:
         return rest_client(self._host, self._port, verbose, dumpHeaders)
 
-    def read_stdout(self) -> Optional[int]:
-        '''
+    def read_stdout(self) -> int | None:
+        """
         Capture Python subprocess output in real-time.
         https://lucadrf.dev/blog/python-subprocess-buffers/
+
         Returns:
          - None if interrupted by KeyboardInterrupt
          - process exit code otherwise
-        '''
+
+        """
         dashes = '==========================='
         assert self._popen is not None
         print(dashes, self._path, self._popen.pid, 'stdout', dashes)

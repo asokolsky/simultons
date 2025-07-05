@@ -1,5 +1,5 @@
 # Byte-compiled / optimized / DLL files
-__pycache__/
+**/__pycache__
 *.py[cod]
 *$py.class
 
@@ -141,9 +141,10 @@ venv.bak/
 /site
 
 # mypy
-.mypy_cache/
+.mypy_cache
 .dmypy.json
 dmypy.json
+.ruff_cache
 
 # Pyre type checker
 .pyre/
@@ -162,3 +163,8 @@ cython_debug/
 #.idea/
 
 .pydeps
+
+# No need to duplicate what's in pyproject.toml
+uv.lock
+# No need to duplicate what's in pyproject.toml
+.python-version

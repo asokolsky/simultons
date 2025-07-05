@@ -1,6 +1,7 @@
-'''
+"""
 Run the simulation and possibly some simultons
-'''
+"""
+
 import subprocess
 
 from . import FastLauncher
@@ -11,9 +12,9 @@ simulation_uri = '/api/v1/simulation'
 
 
 def main() -> int:
-    '''
+    """
     Run the simulation
-    '''
+    """
     print('Launching simulation')
     launcher = FastLauncher('simultons/simulation.py', port)
     assert launcher.launch(stderr=subprocess.STDOUT)

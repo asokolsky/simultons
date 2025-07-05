@@ -1,15 +1,27 @@
-'''
+"""
 Playing with FastAPI, pydantic while simulating stuff
-'''
+"""
 
+# ruff: noqa: I001
 from .arestc import async_rest_client
 from .button import Button, ButtonWithLed, ButtonWithLedPanel
 from .restc import rest_client, wait_until_reachable
 from .globals import simulation_zspec, simulation_ztopic
-from .schemas import NewClockParams, ClockResponse, \
-    NewElevatorParams, ElevatorResponse, Message, \
-    SimulationState, SimulationRequest, SimulationResponse, \
-    SimultonState, NewSimultonParams, SimultonRequest, SimultonResponse
+from .schemas import (
+    NewClockParams,
+    ClockResponse,
+    NewElevatorParams,
+    ElevatorResponse,
+    Message,
+    SimulationState,
+    SimulationRequest,
+    SimulationResponse,
+    SimultonState,
+    NewSimultonParams,
+    SimultonRequest,
+    SimultonResponse,
+)
+
 # order is important to avoid circular dependency!
 from .fast_launcher import FastLauncher
 from .simulton import Simulton, shut_the_process
@@ -17,7 +29,7 @@ from .elevator import Elevator
 from .clock import Clock
 from .simulation import Simulation, SimultonProxy, theSimulation
 
-__version__ = '0.0.1'
+__version__ = '0.1.0'
 
 __all__ = [
     # globals.py
@@ -61,5 +73,5 @@ __all__ = [
     'Simulation',
     'SimulationState',
     'theSimulation',
-    'SimultonProxy'
+    'SimultonProxy',
 ]

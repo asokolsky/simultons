@@ -1,45 +1,52 @@
-'''
+"""
 Testing the simulation stuff
-'''
+"""
+
 import time
-from typing import Dict
 import unittest
+
 import httpx
 
-from simultons import wait_until_reachable, FastLauncher, \
-    SimulationState, SimulationRequest, NewSimultonParams, SimultonResponse
+from simultons import (
+    FastLauncher,
+    NewSimultonParams,
+    SimulationRequest,
+    SimulationState,
+    SimultonResponse,
+    wait_until_reachable,
+)
 
 simulation_uri = '/api/v1/simulation'
 simultons_uri = '/api/v1/simultons'
 
 
 class TestSimulation(unittest.TestCase):
-    '''
+    """
     Verify:
       * simulation launcher
       * creation and interaction with simultons
-    '''
+    """
 
     @classmethod
-    def setUpClass(cls):
-        '''
+    def setUpClass(cls) -> None:
+        """
         For all the test...
-        '''
+        """
         print('TestSimulation.setUpClass')
         return
 
     @classmethod
-    def tearDownClass(cls):
-        '''
+    def tearDownClass(cls) -> None:
+        """
         After all the tests...
-        '''
+        """
         print('TestSimulation.tearDownClass')
         return
 
-    def setUp(self):
-        '''
+    def setUp(self) -> None:
+        """
         For every test
-        '''
+        """
         print('TestSimulation.setUp')
         self._service = FastLauncher('simultons/simulation.py', 9000)
         #
@@ -61,17 +68,16 @@ class TestSimulation(unittest.TestCase):
         self.restc = self._service.get_rest_client(verbose, dumpHeaders)
         return
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         print('TestSimulation.tearDown')
         # request simulation process shutdown
         try:
             req = SimulationRequest(state=SimulationState.SHUTTING)
-            (status_code, rdata) = self.restc.put(
-                simulation_uri, req.model_dump())
+            (status_code, rdata) = self.restc.put(simulation_uri, req.model_dump())
             self._service.wait_to_die(5)
         except httpx.ReadTimeout as err:
             print('Caught in TestSimulation.tearDown:', err)
-            pass
+            # pass
 
         time.sleep(0.1)
         self._service.shutdown(timeout=3)
@@ -82,10 +88,10 @@ class TestSimulation(unittest.TestCase):
         return
 
     def test_minimal(self) -> None:
-        '''
+        """
         Minimum test of the simulation API
         python3 -m unittest -k test_minimal tests/simulation_test.py
-        '''
+        """
         assert self.restc is not None
         (status_code, rdata) = self.restc.get(simulation_uri)
         self.assertTrue(status_code, 200)
@@ -93,14 +99,12 @@ class TestSimulation(unittest.TestCase):
         self.assertEqual(rdata, expected)
         return
 
-    def create_clock_simultons(
-            self, num_simultons: int) -> Dict[str, SimultonResponse]:
-        res: Dict[str, SimultonResponse] = {}
+    def create_clock_simultons(self, num_simultons: int) -> dict[str, SimultonResponse]:
+        res: dict[str, SimultonResponse] = {}
         assert self.restc is not None
         for _ in range(num_simultons):
             params = NewSimultonParams(src_path='simultons/clock.py')
-            (status_code, rdata) = self.restc.post(
-                simultons_uri, params.model_dump())
+            (status_code, rdata) = self.restc.post(simultons_uri, params.model_dump())
             self.assertEqual(status_code, 201)
             # rdata looks like
             # {
@@ -118,9 +122,9 @@ class TestSimulation(unittest.TestCase):
         return res
 
     def test_one_simulton(self) -> None:
-        '''
+        """
         Minimum test of the simulation API
-        '''
+        """
         assert self.restc is not None
         (status_code, rdata) = self.restc.get(simulation_uri)
         self.assertTrue(status_code, 200)
@@ -134,7 +138,7 @@ class TestSimulation(unittest.TestCase):
         sims = self.create_clock_simultons(1)
         print(sims)
         self.assertEqual(len(sims), 1)
-        for port, sim in sims.items():
+        for port in sims:
             # reach out to the sim!
             url = f'http://127.0.0.1:{port}/api/v1/clocks/'
             res = wait_until_reachable(url, 5)
@@ -143,7 +147,7 @@ class TestSimulation(unittest.TestCase):
         return
 
     def test_many_simultons(self) -> None:
-        '''
+        """
         Test N simultons
 
         To run this test alone:
@@ -152,7 +156,7 @@ class TestSimulation(unittest.TestCase):
             1. use `ps` to identify the pid of the shell;
             2. then
             watch -c -n 0.1  pstree -p <shell-pid> -Ut
-        '''
+        """
         assert self.restc is not None
         (status_code, rdata) = self.restc.get(simulation_uri)
         self.assertTrue(status_code, 200)
@@ -170,10 +174,8 @@ class TestSimulation(unittest.TestCase):
         N = 15
         sims = self.create_clock_simultons(N)
         now = time.time()
-        print(f'Created {N} simultons in {now-start} secs')
-        #
-        #
-        #
+        print(f'Created {N} simultons in {now - start} secs')
+
         (status_code, rdata) = self.restc.get(simultons_uri)
         self.assertTrue(status_code, 200)
         self.assertEqual(len(rdata), len(sims))

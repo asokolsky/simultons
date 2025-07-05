@@ -1,24 +1,27 @@
-'''
+"""
 Test launching/shutting FastAPI server programmatically
-'''
+"""
+
 import unittest
 
-from simultons import SimultonProxy, NewElevatorParams
+from simultons import NewElevatorParams, SimultonProxy
 
 simulton_uri = '/api/v1/simulton'
 elevators_uri = '/api/v1/elevators/'
 
 
 class TestSimulton(unittest.TestCase):
-    '''
+    """
     Verify launching/shutting a fastapi process
-    '''
+    """
+
+    _service: SimultonProxy | None = None
 
     @classmethod
-    def setUpClass(cls):
-        '''
+    def setUpClass(cls) -> None:
+        """
         For all the tests
-        '''
+        """
         print('TestSimulton.setUpClass')
         cls._service = SimultonProxy('simultons/elevator.py', 9000)
         #
@@ -33,10 +36,10 @@ class TestSimulton(unittest.TestCase):
         return
 
     @classmethod
-    def tearDownClass(cls):
-        '''
+    def tearDownClass(cls) -> None:
+        """
         Shut FastAPI process
-        '''
+        """
         print('TestSimulton.tearDownClass')
         #
         # shut the simulton process
@@ -44,7 +47,7 @@ class TestSimulton(unittest.TestCase):
         cls._service.shutdown()
         return
 
-    def setUp(self):
+    def setUp(self) -> None:
         # print('setUp', 'fastapi pid:', self.popen.pid)
         #
         # verify the FastAPI server is running
@@ -53,15 +56,15 @@ class TestSimulton(unittest.TestCase):
         self.assertEqual(status_code, 200)
         return
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         # print('tearDown')
         return
 
-    def test_all(self):
-        '''
-        This pretty much repeats elevator_simulton_test except a real HTTP
+    def test_all(self) -> None:
+        """
+        Repeat elevator_simulton_test except a real HTTP
         communication is used, not test client.
-        '''
+        """
         # print('test_all', 'fastapi pid:', self.popen.pid)
 
         (status_code, rdata) = self.restc.get(simulton_uri)
@@ -75,8 +78,7 @@ class TestSimulton(unittest.TestCase):
         names = ['foo', 'bar', 'baz']
         for name in names:
             params = NewElevatorParams(name=name, floors=floors)
-            (status_code, rdata) = self.restc.post(
-                elevators_uri, params.model_dump())
+            (status_code, rdata) = self.restc.post(elevators_uri, params.model_dump())
             self.assertTrue(status_code, 201)
             self.assertTrue(rdata['name'], name)
             self.assertTrue(rdata['floors'], floors)

@@ -1,7 +1,7 @@
 # Simultons Docs Roadmap
 
 There is a single [simulation](simulation.md) which provides context for
-[simulton](simulton.md)s.  Read ore on:
+[simulton](simulton.md)s.  Read more on:
 
 * [Architecture](architecture.md);
 * [TODOs](./todo.md)

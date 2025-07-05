@@ -1,38 +1,47 @@
-'''
+"""
 A simulton is:
 
 * a simulation entity with a REST API
 * holds the instances of the relevant class to be accessed via the REST API.
 
 This simulton is not related to https://ogden.eu/simultons/
-'''
+"""
+
+# ruff: noqa: I001
 import asyncio
 import json
 import os
 import random
 import signal
 import string
-from typing import Any, Dict
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
-from starlette.background import BackgroundTask
+from typing import Any
+
 import zmq
 import zmq.asyncio
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+from pydantic import parse_obj_as
+from starlette.background import BackgroundTask
+
 from .globals import simulation_zspec, simulation_ztopic
-from . import SimulationState, SimulationResponse, \
-    SimultonRequest, SimultonResponse, SimultonState
+from . import (
+    SimulationState,
+    SimulationResponse,
+    SimultonRequest,
+    SimultonResponse,
+    SimultonState,
+)
 
 
 def get_random_id() -> str:
     length = 8
-    return ''.join(
-        random.choice(string.ascii_lowercase) for _ in range(length))
+    return ''.join(random.choice(string.ascii_lowercase) for _ in range(length))  # noqa: S311
 
 
-async def shut_the_process():
-    '''
-    This is how we exit FastAPI app
-    '''
+async def shut_the_process() -> None:
+    """
+    Call this to exit FastAPI app
+    """
     pid = os.getpid()
     os.kill(pid, signal.SIGTERM)
     print(f'SIGTERM sent to {pid}')
@@ -40,11 +49,12 @@ async def shut_the_process():
 
 
 class Simulton:
-    '''
+    """
     A unit of simulation with REST API exposed via FastAPI(s).
     This class is used as a parent to an actual class to be instantiated in the
     simulton process.
-    '''
+    """
+
     title = 'FooBar'
     description = 'FooBar API'
     version = '0.0.1'
@@ -62,23 +72,24 @@ class Simulton:
         self._zsocket.connect(simulation_zspec)
 
         # map of instance ID to the instance itself
-        self._instances: Dict[str, Any] = {}
+        self._instances: dict[str, Any] = {}
+        self._bgtasks: set[asyncio.Task] = set()
         return
 
     async def recv_zmq_string(self) -> str:
-        '''
+        """
         Background async task to receive zmq data
-        '''
+        """
         print('Simulton.recv_zmq_string..')
         res = await self._zsocket.recv_string()
         print('Simulton.recv_zmq_string() =>', res)
         topic, message = res.split()
         assert topic == simulation_ztopic
         # dispatch message
-        from pydantic import parse_obj_as
         try:
             self.on_simulation_state_update(
-                parse_obj_as(SimulationResponse, json.loads(message)))
+                parse_obj_as(SimulationResponse, json.loads(message))
+            )
         except json.JSONDecodeError as err:
             print('recv_zmq_string caught JSONDecodeError', err)
         except Exception as err:
@@ -101,12 +112,12 @@ class Simulton:
 
     @property
     def state(self) -> SimultonState:
-        '''Simulton state accessor'''
+        """Simulton state accessor"""
         return self._state
 
     @state.setter
     def state(self, state: SimultonState) -> SimultonState:
-        '''Simulton state setter'''
+        """Simulton state setter"""
         if state == self._state:
             return state
         print(f'Simulton {self.title} {self._state} -> {state}')
@@ -130,21 +141,21 @@ class Simulton:
 
     @property
     def name(self) -> str:
-        '''
-        just get the name
-        '''
+        """
+        Name property.
+        """
         return self._name
 
     @property
     def rate(self) -> float:
-        '''
-        just get the rate
-        '''
+        """
+        Rate property.
+        """
         return self._rate
 
     @rate.setter
     def rate(self, rate: float) -> float:
-        '''Simulton rate setter'''
+        """Simulton rate setter"""
         if rate == self._rate:
             return rate
         print(f'Simulton rate {self._rate} -> {rate}')
@@ -152,43 +163,48 @@ class Simulton:
         return rate
 
     @property
-    def instances(self) -> Dict[str, Any]:
+    def instances(self) -> dict[str, Any]:
         return self._instances
 
     def on_running(self) -> None:
-        '''
+        """
         State just transitioned to RUNNING
-        '''
+        """
         print('Simulton.on_running')
         return
 
     def on_paused(self) -> None:
-        '''
+        """
         State just transitioned to PAUSED
-        '''
+        """
         print('Simulton.on_paused')
         return
 
     def on_shutting(self) -> None:
-        '''
+        """
         State just transitioned to SHUTTING
-        '''
+        """
         print('Simulton.on_shutting', self)
         return
 
     def on_startup(self) -> None:
-        '''
+        """
         Simulton FastAPI app startup event handler
-        '''
+        """
         # prepare to read from the zmq socket
-        asyncio.create_task(self.recv_zmq_string())
+        task = asyncio.create_task(self.recv_zmq_string())
+        self._bgtasks.add(task)
+        # To prevent keeping references to finished tasks forever,
+        # make each task remove its own reference from the set after completion
+        task.add_done_callback(self._bgtasks.discard)
+
         self.state = SimultonState.PAUSED
         return
 
     def on_shutdown(self) -> None:
-        '''
+        """
         Simulton FastAPI app shutdown event handler
-        '''
+        """
         print('Simulton.on_shutdown', self)
         # close the zmq subscriber
         # https://zguide.zeromq.org/docs/chapter1/#Making-a-Clean-Exit
@@ -210,11 +226,11 @@ class Simulton:
         return
 
     def get_instance_by_id(self, id: str) -> Any:
-        '''Raises KeyError if id is not a key'''
+        """Raises KeyError if id is not a key"""
         return self._instances[id]
 
     def del_instance_by_id(self, id: str) -> None:
-        '''Raises KeyError if id is not a key'''
+        """Raises KeyError if id is not a key"""
         del self._instances[id]
         return
 
@@ -222,8 +238,8 @@ class Simulton:
     def create_app(cls) -> FastAPI:
         print('Creating a FastAPI app', cls.description)
         return FastAPI(
-            title=cls.title, description=cls.description,
-            version=cls.version)
+            title=cls.title, description=cls.description, version=cls.version
+        )
 
     def to_response(self) -> SimultonResponse:
         return SimultonResponse(
@@ -231,12 +247,13 @@ class Simulton:
             rate=self.rate,
             state=self.state,
             title=self.title,
-            version=self.version)
+            version=self.version,
+        )
 
     def on_put_simulton(self, req: SimultonRequest) -> JSONResponse:
-        '''
+        """
         Handle REST API PUT to change the simulton state
-        '''
+        """
         if req.rate is not None:
             self.rate = req.rate
         self.state = req.state
@@ -247,12 +264,14 @@ class Simulton:
         return JSONResponse(
             status_code=202,
             content=self.to_response().model_dump(),
-            background=background)
+            background=background,
+        )
+
 
 #
 # the derivatives have to have these:
 #
-# theDerivedSimulton = Optional[Simulation] = None # ClockSimulton()
+# theDerivedSimulton Simulation | None = None # ClockSimulton()
 # let's try to delay instantiation to ensure that just importing the package
 # does NOT create network resources
 #

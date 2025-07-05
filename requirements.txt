@@ -1,5 +1,0 @@
-fastapi[standard]
-fastapi-utils
-httpx
-typing-inspect
-pyzmq

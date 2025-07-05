@@ -5,11 +5,8 @@ export PROJECT_ROOT = $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 # define the name of the virtual environment directory
 VENV:=.venv
 
-PYTHON=$(VENV)/bin/python3
-PIP=$(VENV)/bin/pip
-
 # targets which are NOT files
-.PHONY: help venv run test clean build
+.PHONY: help run tests clean lint format clean build
 
 help:										## Shows the help
 	@echo 'Usage: make <TARGETS>'
@@ -21,31 +18,38 @@ help:										## Shows the help
 		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-25s\033[0m %s\n", $$1, $$2}'
 	@echo ''
 
-# venv is a shortcut target
-venv: $(VENV)/bin/activate                  ## Activate the venv
+run:									## Execute python program
+	uv run simultons/__main__.py $(SITE)
 
-$(VENV)/bin/activate: requirements.txt
-	python3 -m venv $(VENV)
-	$(PIP) install -r requirements.txt
+tests:									## Execute python tests
+	uv run -m unittest -v tests/*_test.py
 
-run: venv									## Execute python program
-	$(PYTHON) simultons/__main__.py $(SITE)
+lint:									## Lint python sources
+# check imports
+	uv run ruff check -v --select I simultons/*.py tests/*.py
+	uv run ruff check -v simultons/*.py tests/*.py
 
-tests: venv									## Execute python tests
-	$(PYTHON) -m unittest -v tests/*_test.py
+format:									## Format python sources
+# sort imports
+	uv run ruff check --select I --fix simultons tests
+# reformat sources
+	uv run ruff format -v simultons tests
+
+mypy:									## Check typing
+	uv run mypy simultons tests
 
 clean:										## Cleanup the artifacts
-	rm -rf $(VENV) .mypy_cache
+	rm -rf $(VENV) .mypy_cache .ruff_cache
 	find . -name __pycache__ | xargs rm -rf
 
 DOCKER_USERNAME ?= john.doe
 APPLICATION_NAME ?= da-app
 GIT_HASH ?= $(shell git log --format="%h" -n 1)
 
-build:								## Build docker image
+build:									## Build docker image
 	docker build --tag ${DOCKER_USERNAME}/${APPLICATION_NAME}:${GIT_HASH} .
 
-release:							## Release docker image
+release: .docker-password				## Release docker image
 	cat ./.docker-password | docker login --username ${DOCKER_USERNAME} --password-stdin
 	docker push ${DOCKER_USERNAME}/${APPLICATION_NAME}:${GIT_HASH}
 	docker pull ${DOCKER_USERNAME}/${APPLICATION_NAME}:${GIT_HASH}

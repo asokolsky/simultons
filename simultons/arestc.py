@@ -1,24 +1,25 @@
-'''
+"""
 Async REST client and other utilities
-'''
-from urllib.parse import urljoin
+"""
+
 import time
-from typing import Any, Optional, Tuple
-import httpx
 from json.decoder import JSONDecodeError
+from typing import Any
+from urllib.parse import urljoin
+
+import httpx
 
 
 class async_rest_client:
-    '''
+    """
     Async REST client
-    '''
+    """
 
-    def __init__(self, host: str, port: int, verbose: bool,
-                 dumpHeaders: bool) -> None:
-        '''
+    def __init__(self, host: str, port: int, verbose: bool, dumpHeaders: bool) -> None:
+        """
         In: iface - server interface, or host name
             port - server port
-        '''
+        """
         self.base_url = f'http://{host}:{port}'
         self.verbose = verbose
         self.dumpHeaders = dumpHeaders
@@ -26,13 +27,13 @@ class async_rest_client:
         return
 
     async def close(self) -> None:
-        '''
+        """
         Close the underlying TCP connection
-        '''
+        """
         await self.ses.aclose()
         return
 
-    def print_req(self, method: str, uri: str, data: Optional[Any]) -> None:
+    def print_req(self, method: str, uri: str, data: Any | None) -> None:
         if not self.verbose:
             return
         if data is None:
@@ -53,12 +54,12 @@ class async_rest_client:
                 print('   ', h, ':', resp.headers[h])
         return
 
-    async def get(self, uri: str) -> Tuple[int, Any]:
-        '''
+    async def get(self, uri: str) -> tuple[int, Any]:
+        """
         Issue HTTP GET to a base_url + uri
         returns (http_status, response_json)
         Throws requests.exceptions.ConnectionError when connection fails
-        '''
+        """
         self.print_req('GET', uri, None)
         resp = await self.ses.get(uri)
         self.print_resp('GET', resp)
@@ -68,12 +69,12 @@ class async_rest_client:
             jresp = resp
         return (resp.status_code, jresp)
 
-    async def post(self, uri: str, data: Any):
-        '''
+    async def post(self, uri: str, data: Any) -> tuple[int, Any]:
+        """
         Issue HTTP POST to a base_url + uri
         returns (http_status, response_json)
         Throws requests.exceptions.ConnectionError when connection fails
-        '''
+        """
         self.print_req('POST', uri, data)
         resp = await self.ses.post(uri, json=data)
         self.print_resp('POST', resp)
@@ -84,12 +85,12 @@ class async_rest_client:
             jresp = resp
         return (resp.status_code, jresp)
 
-    async def delete(self, uri: str) -> Tuple[int, Any]:
-        '''
+    async def delete(self, uri: str) -> tuple[int, Any]:
+        """
         Issue HTTP DELETE to a base_url + uri
         returns (http_status, response_json)
         Throws requests.exceptions.ConnectionError when connection fails
-        '''
+        """
         self.print_req('DELETE', uri, None)
         resp = await self.ses.delete(uri)
         self.print_resp('DELETE', resp)
@@ -99,12 +100,12 @@ class async_rest_client:
             jresp = resp
         return (resp.status_code, jresp)
 
-    async def put(self, uri: str, data: Any) -> Tuple[int, Any]:
-        '''
+    async def put(self, uri: str, data: Any) -> tuple[int, Any]:
+        """
         Issue HTTP PUT to a base_url + uri
         returns (http_status, response_json)
         Throws requests.exceptions.ConnectionError when connection fails
-        '''
+        """
         self.print_req('PUT', uri, data)
         resp = await self.ses.put(uri, json=data)
         self.print_resp('PUT', resp)
@@ -115,12 +116,12 @@ class async_rest_client:
             jresp = resp
         return (resp.status_code, jresp)
 
-    async def patch(self, uri: str, data: Any) -> Tuple[int, Any]:
-        '''
+    async def patch(self, uri: str, data: Any) -> tuple[int, Any]:
+        """
         Issue HTTP PATCH to a base_url + uri
         returns (http_status, response_json)
         Throws requests.exceptions.ConnectionError when connection fails
-        '''
+        """
         self.print_req('PATCH', uri, data)
         resp = await self.ses.patch(uri, json=data)
         self.print_resp('PATCH', resp)
@@ -132,10 +133,10 @@ class async_rest_client:
         return (resp.status_code, jresp)
 
 
-def wait_until_reachable(url: str, timeout: int) -> Optional[httpx.Response]:
-    '''
+def wait_until_reachable(url: str, timeout: int) -> httpx.Response | None:
+    """
     Wait upto timeout secs until the url is reachable
-    '''
+    """
     start = time.time()
     time_to_timeout = start + timeout
     print(f'wait_until_reachable({url}, {timeout})', end='', flush=True)
@@ -146,11 +147,13 @@ def wait_until_reachable(url: str, timeout: int) -> Optional[httpx.Response]:
             x = httpx.get(url)
             if x.status_code == 200:
                 # YES!
-                print(f'\nwait_until_reachable({url}, {timeout}) => {x},'
-                      f' after {time.time()-start:.2f} secs')
+                print(
+                    f'\nwait_until_reachable({url}, {timeout}) => {x},'
+                    f' after {time.time() - start:.2f} secs'
+                )
                 return x
         except httpx.ConnectError:
             print('.', end='', flush=True)
-            pass
+
     print(f'\nwait_until_reachable({url}, {timeout}) => None')
     return None

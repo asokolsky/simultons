@@ -1,0 +1,56 @@
+[project]
+name = "simultons"
+version = "0.1.0"
+description = "Just playing with elevator simulation."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi-utils>=0.8.0",
+    "fastapi[standard]>=0.115.14",
+    "httpx>=0.28.1",
+    "pyzmq>=27.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.16.1",
+    "ruff>=0.12.1",
+    "typing-inspect>=0.9.0",
+]
+
+[project.scripts]
+simultons = "simultons/__main__:main"
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "A001","A002","ANN401","ARG001",
+    "B011","BLE001",
+    "C901","COM812",
+    "D100","D101","D102","D103","D104","D107","D200","D202","D205","D212","D400","D401","D415",
+    "E501","EM102","ERA001",
+    "FBT001",
+    "Q000", "N806",
+    "N801","N803",
+    "PT009","PT015","PLR0915","PLR1711","PLR0912","PLR0913","PLR2004","PLW0603",
+    "RET505","RET507","RUF022",
+    "S101","SIM114","SLF001",
+    "T201",
+    "TRY003","TRY300"
+]
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.mypy]
+warn_return_any = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "mypy-recurrent.*"
+]
+ignore_missing_imports = true
