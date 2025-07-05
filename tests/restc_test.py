@@ -2,12 +2,14 @@
 # HTTP Client Test
 #
 # Launch it by issuing:
-#  python3 -m unittest -v restc_test
+#  python3 -m unittest -v tests/restc_test
 #
 import asyncio
 import time
 import unittest
 from json import loads
+
+import httpx
 
 from simultons import async_rest_client, rest_client
 
@@ -24,7 +26,7 @@ uris = [
     '/json',
     '/uuid',
 ]
-user_agent = ['python-httpx/0.27.2']
+user_agent = ['python-httpx/' + httpx.__version__]
 
 
 class TestRestC(unittest.TestCase):

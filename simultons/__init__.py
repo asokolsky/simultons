@@ -5,7 +5,7 @@ Playing with FastAPI, pydantic while simulating stuff
 # ruff: noqa: I001
 from .arestc import async_rest_client
 from .button import Button, ButtonWithLed, ButtonWithLedPanel
-from .restc import rest_client, wait_until_reachable
+from .restc import rest_client
 from .globals import simulation_zspec, simulation_ztopic
 from .schemas import (
     NewClockParams,
@@ -21,6 +21,7 @@ from .schemas import (
     SimultonRequest,
     SimultonResponse,
 )
+from .wait import wait_until_reachable
 
 # order is important to avoid circular dependency!
 from .fast_launcher import FastLauncher
