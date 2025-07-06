@@ -23,3 +23,8 @@ More [documents](./docs/).
 * [simpy](https://simpy.readthedocs.io/en/latest/) is awesome and is highly
 recommended and is NOT used in this project.
 * our use of term `simulton` is NOT related to https://ogden.eu/simultons/
+
+## Prerequisites
+
+* python
+* [uv](https://github.com/astral-sh/uv)

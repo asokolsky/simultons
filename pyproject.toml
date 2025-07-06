@@ -52,6 +52,7 @@ warn_unused_configs = true
 
 [[tool.mypy.overrides]]
 module = [
-    "mypy-recurrent.*"
+    "mypy-recurrent.*",
+    "strip_ansi.*"
 ]
 ignore_missing_imports = true

@@ -2,15 +2,12 @@
 FastAPI process launcher
 """
 
-import json
 import os
 import signal
 import subprocess
 import time
 from pathlib import Path
-from typing import Any
 
-import httpx
 from strip_ansi import strip_ansi
 
 from . import rest_client, wait_until_reachable
@@ -35,7 +32,7 @@ class FastLauncher:
         #
         verbose = True
         dumpHeaders = False
-        self._restc = self.get_rest_client(verbose, dumpHeaders)
+        self._restc: rest_client | None = self.get_rest_client(verbose, dumpHeaders)
         return
 
     @property

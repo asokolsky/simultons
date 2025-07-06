@@ -13,6 +13,7 @@ from simultons import (
     SimulationRequest,
     SimulationState,
     SimultonResponse,
+    rest_client,
     wait_until_reachable,
 )
 
@@ -51,7 +52,7 @@ class TestSimulation(unittest.TestCase):
         # start the simulation process
         #
         print('TestSimulation.setUp')
-        self._service = FastLauncher('simultons/simulation.py', 9000)
+        self._service: FastLauncher | None = FastLauncher('simultons/simulation.py', 9000)
         pid = self._service.launch()
         print('FastLauncher(simultons/simulation.py, 9000).launch() => ', pid)
         res = self._service.wait_until_reachable(simulation_uri)
@@ -59,16 +60,19 @@ class TestSimulation(unittest.TestCase):
         expected = {'state': 'PAUSED', 'rate': 0.0}
         self.assertEqual(res, expected)
         #
-        #
         # create simulation REST client
         #
         verbose = True
         dumpHeaders = False
-        self.restc = self._service.get_rest_client(verbose, dumpHeaders)
+        self.restc: rest_client | None = self._service.get_rest_client(
+            verbose, dumpHeaders
+        )
         return
 
     def tearDown(self) -> None:
         print('TestSimulation.tearDown')
+        assert self._service is not None
+        assert self.restc is not None
         # request simulation process shutdown
         try:
             req = SimulationRequest(state=SimulationState.SHUTTING)
@@ -161,6 +165,7 @@ class TestSimulation(unittest.TestCase):
             2. then
             watch -c -n 0.1  pstree -p <shell-pid> -Ut
         """
+        N = 15
         assert self.restc is not None
         (status_code, rdata) = self.restc.get(simulation_uri)
         self.assertTrue(status_code, 200)
@@ -175,7 +180,6 @@ class TestSimulation(unittest.TestCase):
         # create a few clock simultons
         #
         start = time.time()
-        N = 15
         sims = self.create_clock_simultons(N)
         now = time.time()
         print(f'Created {N} simultons in {now - start} secs')

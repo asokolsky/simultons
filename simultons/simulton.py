@@ -87,7 +87,7 @@ class Simulton:
         assert topic == simulation_ztopic
         # dispatch message
         try:
-            self.on_simulation_state_update(
+            await self.on_simulation_state_update(
                 parse_obj_as(SimulationResponse, json.loads(message))
             )
         except json.JSONDecodeError as err:
@@ -97,7 +97,7 @@ class Simulton:
 
         return message
 
-    def on_simulation_state_update(self, resp: SimulationResponse) -> None:
+    async def on_simulation_state_update(self, resp: SimulationResponse) -> None:
         print('on_simulation_state_update', resp)
         if resp.state == SimulationState.PAUSED:
             self.state = SimultonState.PAUSED
@@ -105,7 +105,7 @@ class Simulton:
             self.state = SimultonState.RUNNING
         elif resp.state == SimulationState.SHUTTING:
             self.state = SimultonState.SHUTTING
-            shut_the_process()
+            await shut_the_process()
         else:
             assert False
         return

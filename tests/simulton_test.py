@@ -4,7 +4,7 @@ Test launching/shutting FastAPI server programmatically
 
 import unittest
 
-from simultons import NewElevatorParams, SimultonProxy
+from simultons import NewElevatorParams, SimultonProxy, rest_client
 
 simulton_uri = '/api/v1/simulton'
 elevators_uri = '/api/v1/elevators/'
@@ -16,6 +16,7 @@ class TestSimulton(unittest.TestCase):
     """
 
     _service: SimultonProxy | None = None
+    restc: rest_client | None = None
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -42,6 +43,7 @@ class TestSimulton(unittest.TestCase):
         #
         # shut the simulton process
         #
+        assert cls._service is not None
         cls._service.shutdown()
         return
 
@@ -50,6 +52,7 @@ class TestSimulton(unittest.TestCase):
         #
         # verify the FastAPI server is running
         #
+        assert self.restc is not None
         (status_code, rdata) = self.restc.get(simulton_uri)
         self.assertEqual(status_code, 200)
         return
@@ -65,6 +68,7 @@ class TestSimulton(unittest.TestCase):
         """
         # print('test_all', 'fastapi pid:', self.popen.pid)
 
+        assert self.restc is not None
         (status_code, rdata) = self.restc.get(simulton_uri)
         self.assertTrue(status_code, 200)
         self.assertEqual(rdata['state'], 'PAUSED')
