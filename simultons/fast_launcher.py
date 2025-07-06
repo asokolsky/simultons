@@ -13,7 +13,7 @@ from typing import Any
 import httpx
 from strip_ansi import strip_ansi
 
-from . import rest_client
+from . import rest_client, wait_until_reachable
 
 
 class FastLauncher:
@@ -48,9 +48,10 @@ class FastLauncher:
         """Port accessor."""
         return self._port
 
-    def launch(self, stdout=subprocess.PIPE, stderr=subprocess.PIPE) -> int:  # noqa: ANN001
+    def launch(self, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) -> int:  # noqa: ANN001
         """
         Start the FastAPI service process.
+        To redirect stderr to stdout: stderr=subprocess.STDOUT
         Returns service process pid
         """
         # parent_dir = os.path.abspath(
@@ -67,69 +68,23 @@ class FastLauncher:
             str(1),
             self._path,
         ]
-        print('command_line:', *command_line)
-        print('cwd:', parent_dir)
+        print('cwd:', parent_dir, 'command_line:', *command_line)
         self._popen = subprocess.Popen(  # noqa: S603
-            command_line, cwd=parent_dir, stdout=stdout, stderr=stderr, text=True
+            command_line,
+            cwd=parent_dir,
+            stdout=stdout,
+            stderr=stderr,  # text=True
         )
-        # wait until process pid has children
-        # while True:
-        #    proc = psutil.Process(self._popen.pid)
-        #    children = proc.children(recursive=True)
-        #    print('Waiting for children of', self._popen.pid, children)
-        #    if len(children) > 0:
-        #        break
-        #    time.sleep(1)
         return self._popen.pid
 
-    def wait_until_reachable(
-        self, health_uri: str, timeout: int
-    ) -> dict[str, Any] | None:
+    def wait_until_reachable(self, health_uri: str, timeout: int = 20) -> dict | None:
         """
         Give some room for the process to start.
         Returns a JSON produced by health_uri
         """
-        url = f'http://{self._host}:{self._port}{health_uri}'
-        start = time.time()
-        time_to_timeout = start + timeout
-        print(f'wait_until_reachable({url}, {timeout})', end='', flush=True)
-        assert self._popen is not None
-        while time.time() < time_to_timeout:
-            try:
-                self._popen.wait(1)
-                # if we are here, this means the process has terminated
-                print(
-                    f'\nwait_until_reachable({url}, {timeout}) => None,'
-                    f' after {time.time() - start:.2f} secs,'
-                    ' process terminated'
-                )
-                return None
-
-            except subprocess.TimeoutExpired:
-                print('.', end='', flush=True)
-
-            try:
-                # are we there yet?
-                x = httpx.get(url, timeout=0.1)
-                if x.status_code == 200:
-                    # YES!
-                    try:
-                        jres = x.json()
-                        print(
-                            f'\nwait_until_reachable({url}, {timeout}) => {jres},'
-                            f' after {time.time() - start:.2f} secs'
-                        )
-                        return jres
-                    except json.decoder.JSONDecodeError:
-                        jres = {'response': str(x)}
-                        return jres
-
-            except httpx.ConnectError:
-                print('.', end='', flush=True)
-                # pass
-
-        print(f'\nwait_until_reachable({url}, {timeout}) => None')
-        return None
+        return wait_until_reachable(
+            f'http://{self._host}:{self._port}{health_uri}', self._popen, timeout
+        )
 
     def wait_to_die(self, timeout: float = 0.5) -> bool:
         assert self._popen is not None
@@ -188,9 +143,12 @@ class FastLauncher:
             stdout_value, stderr_value = self._popen.communicate()
         except Exception as err:
             print('Caught while tying to communicate with', self._popen.pid, err)
+
         dashes = '==========================='
         output_produced = False
         if stdout_value:
+            if isinstance(stdout_value, (bytes, bytearray)):
+                stdout_value = stdout_value.decode()
             print(
                 dashes,
                 self._path,
@@ -202,6 +160,8 @@ class FastLauncher:
             )
             output_produced = True
         if stderr_value:
+            if isinstance(stderr_value, (bytes, bytearray)):
+                stderr_value = stderr_value.decode()
             print(
                 dashes,
                 self._path,

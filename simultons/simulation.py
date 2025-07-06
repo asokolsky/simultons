@@ -61,11 +61,10 @@ class SimultonProxy(Simulton):
         """
         return self._launcher.launch()
 
-    def wait_until_reachable(self, timeout: int) -> bool:
+    def wait_until_reachable(self, timeout: int = 20) -> bool:
         jresp = self._launcher.wait_until_reachable(self.simulton_uri, timeout)
-        if jresp is None:
-            return False
-        print('wait_until_reachable =>', jresp)
+        print(f'wait_until_reachable({self.simulton_uri}) =>', jresp)
+        assert isinstance(jresp, dict)
         self.description = jresp['description']
         self.rate = jresp['rate']
         self.title = jresp['title']

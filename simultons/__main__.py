@@ -18,7 +18,7 @@ def main() -> int:
     print('Launching simulation')
     launcher = FastLauncher('simultons/simulation.py', port)
     assert launcher.launch(stderr=subprocess.STDOUT)
-    res = launcher.wait_until_reachable(simulation_uri, 3)
+    res = launcher.wait_until_reachable(simulation_uri)
     if res:
         launcher.read_stdout()
 

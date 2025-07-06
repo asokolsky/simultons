@@ -47,16 +47,15 @@ class TestSimulation(unittest.TestCase):
         """
         For every test
         """
-        print('TestSimulation.setUp')
-        self._service = FastLauncher('simultons/simulation.py', 9000)
-        print('FastLauncher(simultons/simulation.py, 9000) => ', self._service)
         #
         # start the simulation process
         #
-        assert self._service.launch()
-        time.sleep(3)
-        res = self._service.wait_until_reachable(simulation_uri, 20)
-        print('self._service.wait_until_reachable(/docs, 20) => ', res)
+        print('TestSimulation.setUp')
+        self._service = FastLauncher('simultons/simulation.py', 9000)
+        pid = self._service.launch()
+        print('FastLauncher(simultons/simulation.py, 9000).launch() => ', pid)
+        res = self._service.wait_until_reachable(simulation_uri)
+        print(f'wait_until_reachable({simulation_uri}) => ', res)
         expected = {'state': 'PAUSED', 'rate': 0.0}
         self.assertEqual(res, expected)
         #
@@ -127,7 +126,8 @@ class TestSimulation(unittest.TestCase):
 
     def test_one_simulton(self) -> None:
         """
-        Minimum test of the simulation API
+        Test creation of just one simulton.
+        python3 -m unittest -k test_one_simulton tests/simulation_test.py
         """
         assert self.restc is not None
         (status_code, rdata) = self.restc.get(simulation_uri)
@@ -145,9 +145,9 @@ class TestSimulation(unittest.TestCase):
         for port in sims:
             # reach out to the sim!
             url = f'http://127.0.0.1:{port}/api/v1/clocks/'
-            res = wait_until_reachable(url, 5)
-            self.assertTrue(res)
+            res = wait_until_reachable(url)
             print('Clocks:', res)
+            self.assertIsNotNone(res)
         return
 
     def test_many_simultons(self) -> None:

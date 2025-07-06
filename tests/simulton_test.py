@@ -28,9 +28,7 @@ class TestSimulton(unittest.TestCase):
         # start the simulton process
         #
         assert cls._service.launch()
-        if not cls._service.wait_until_reachable(3):
-            cls._service.shutdown()
-            assert False
+        assert cls._service.wait_until_reachable()
         # save the client
         cls.restc = cls._service._launcher._restc
         return

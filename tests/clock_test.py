@@ -23,9 +23,7 @@ class TestClockSimulton(unittest.TestCase):
         print('TestClockSimulton.setUpClass')
         cls._service = SimultonProxy('simultons/clock.py', 9000)
         assert cls._service.launch()
-        if not cls._service.wait_until_reachable(3):
-            cls._service.shutdown()
-            assert False
+        assert cls._service.wait_until_reachable() is not None
         # save the client
         cls.restc = cls._service._launcher._restc
         return

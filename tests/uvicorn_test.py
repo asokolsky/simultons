@@ -77,8 +77,7 @@ class TestUvicorn(unittest.TestCase):
         cls.process = Process(target=launch_uvicorn)
         cls.process.start()
 
-        # wait until it is reachable
-        res = wait_until_reachable(f'http://{host}:{port}/hello', 2)
+        res = wait_until_reachable(f'http://{host}:{port}/hello')
         assert res is not None
 
         cls.restc = rest_client(host, port, True, True)  # noqa: FBT003
