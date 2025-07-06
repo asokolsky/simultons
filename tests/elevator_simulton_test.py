@@ -7,7 +7,6 @@ from simultons.elevator import app
 
 elevators_uri = '/api/v1/elevators/'
 
-
 class TestElevatorSimultonWithTestClient(unittest.TestCase):
     """
     Verify ElevatorSimulton functionality using TestClient

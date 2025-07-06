@@ -3,7 +3,8 @@
 Simulton is:
 
 * a process
-* a REST service(s)
+* a zmq subscriber to Simulation publisher
+* a FastAPI REST service(s)
 
 responsible for creating simulated objects of one class, e.g. clock or elevator
 class.  Such objects then can be interacted with using REST API.

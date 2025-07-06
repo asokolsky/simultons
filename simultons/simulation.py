@@ -27,7 +27,8 @@ from . import (
 
 class SimultonProxy(Simulton):
     """
-    Simulation idea of simulton(s)
+    Simulation idea of simulton(s).
+    This class is used by the simulation to talk to the simultons.
     """
 
     simulton_uri = '/api/v1/simulton'
@@ -76,6 +77,8 @@ class SimultonProxy(Simulton):
         """
         Send a request to the simulton to move to the PAUSED state
         """
+        if self._launcher._restc is None:
+            return False
         params = SimultonRequest(state=SimultonState.PAUSED)
         (status_code, rdata) = self._launcher._restc.put(
             self.simulton_uri, params.model_dump()
@@ -86,6 +89,8 @@ class SimultonProxy(Simulton):
         """
         Send a request to the simulton to move to the RUNNING state
         """
+        if self._launcher._restc is None:
+            return False
         params = SimultonRequest(state=SimultonState.RUNNING, rate=rate)
         (status_code, rdata) = self._launcher._restc.put(
             self.simulton_uri, params.model_dump()
@@ -96,6 +101,8 @@ class SimultonProxy(Simulton):
         """
         Send a request to the simulton to move to the SHUTTING state
         """
+        if self._launcher._restc is None:
+            return False
         params = SimultonRequest(state=SimultonState.SHUTTING)
         (status_code, rdata) = self._launcher._restc.put(
             self.simulton_uri, params.model_dump()

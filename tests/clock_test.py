@@ -3,7 +3,6 @@ import unittest
 
 from simultons import ClockResponse, NewClockParams, SimultonProxy, rest_client
 
-simulton_uri = '/api/v1/simulton'
 clocks_uri = '/api/v1/clocks/'
 
 

@@ -173,8 +173,9 @@ class FastLauncher:
             print(dashes, self._path, self._popen.pid, 'end', dashes)
 
         # close the socket
-        self._restc.close()
-        self._restc = None
+        if self._restc is not None:
+            self._restc.close()
+            self._restc = None
         return res
 
     def get_rest_client(self, verbose: bool, dumpHeaders: bool) -> rest_client:

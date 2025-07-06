@@ -1,5 +1,11 @@
 # Simulation
 
+Simulation is:
+
+* a process
+* a FastAPI service
+* a zmq publisher
+
 ## Simulation State
 
 * Init

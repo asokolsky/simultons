@@ -15,7 +15,7 @@ There is a single [simulation](simulation.md) which provides context for
 
 [Simulton](simulton.md) is:
 
-* a process
+* a process (one per simulton instance)
 * a FastAPI service
 * a zmq subscriber to Simulation publisher
 

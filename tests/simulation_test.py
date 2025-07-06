@@ -5,20 +5,12 @@ Testing the simulation stuff
 import time
 import unittest
 
-import httpx
-
 from simultons import (
-    FastLauncher,
     NewSimultonParams,
-    SimulationRequest,
-    SimulationState,
+    SimulationClient,
     SimultonResponse,
-    rest_client,
     wait_until_reachable,
 )
-
-simulation_uri = '/api/v1/simulation'
-simultons_uri = '/api/v1/simultons'
 
 
 class TestSimulation(unittest.TestCase):
@@ -33,7 +25,7 @@ class TestSimulation(unittest.TestCase):
         """
         For all the test...
         """
-        print('TestSimulation.setUpClass')
+        # print('TestSimulation.setUpClass')
         return
 
     @classmethod
@@ -41,7 +33,7 @@ class TestSimulation(unittest.TestCase):
         """
         After all the tests...
         """
-        print('TestSimulation.tearDownClass')
+        # print('TestSimulation.tearDownClass')
         return
 
     def setUp(self) -> None:
@@ -52,43 +44,13 @@ class TestSimulation(unittest.TestCase):
         # start the simulation process
         #
         print('TestSimulation.setUp')
-        self._service: FastLauncher | None = FastLauncher('simultons/simulation.py', 9000)
-        pid = self._service.launch()
-        print('FastLauncher(simultons/simulation.py, 9000).launch() => ', pid)
-        res = self._service.wait_until_reachable(simulation_uri)
-        print(f'wait_until_reachable({simulation_uri}) => ', res)
-        expected = {'state': 'PAUSED', 'rate': 0.0}
-        self.assertEqual(res, expected)
-        #
-        # create simulation REST client
-        #
-        verbose = True
-        dumpHeaders = False
-        self.restc: rest_client | None = self._service.get_rest_client(
-            verbose, dumpHeaders
-        )
+        self._client = SimulationClient()
+        self._client.setUp()
         return
 
     def tearDown(self) -> None:
         print('TestSimulation.tearDown')
-        assert self._service is not None
-        assert self.restc is not None
-        # request simulation process shutdown
-        try:
-            req = SimulationRequest(state=SimulationState.SHUTTING)
-            (status_code, rdata) = self.restc.put(simulation_uri, req.model_dump())
-            self._service.wait_to_die(5)
-        except httpx.ConnectError as err:
-            print('Caught in TestSimulation.tearDown:', err)
-        except httpx.ReadTimeout as err:
-            print('Caught in TestSimulation.tearDown:', err)
-
-        time.sleep(0.1)
-        self._service.shutdown(timeout=3)
-        self._service = None
-
-        # self.restc.close()
-        self.restc = None
+        self._client.tearDown()
         return
 
     def test_minimal(self) -> None:
@@ -96,23 +58,26 @@ class TestSimulation(unittest.TestCase):
         Minimum test of the simulation API
         python3 -m unittest -k test_minimal tests/simulation_test.py
         """
-        assert self.restc is not None
-        try:
-            (status_code, rdata) = self.restc.get(simulation_uri)
-            self.assertTrue(status_code, 200)
-            expected = {'state': 'PAUSED', 'rate': 0}
-            self.assertEqual(rdata, expected)
-        except httpx.ConnectError as err:
-            print('Caught:', err)
+        assert self._client is not None
+        rdata = self._client.get_simulation()
+        expected = {'state': 'PAUSED', 'rate': 0}
+        self.assertEqual(rdata, expected)
+        #
+        # let's run simulation with no simultons now
+        #
+
+        #
+        # lets stop simulation
+        #
         return
 
     def create_clock_simultons(self, num_simultons: int) -> dict[str, SimultonResponse]:
         res: dict[str, SimultonResponse] = {}
-        assert self.restc is not None
+        assert self._client is not None
+        param = NewSimultonParams(src_path='simultons/clock.py')
         for _ in range(num_simultons):
-            params = NewSimultonParams(src_path='simultons/clock.py')
-            (status_code, rdata) = self.restc.post(simultons_uri, params.model_dump())
-            self.assertEqual(status_code, 201)
+            rdata = self._client.post_simulton(param)
+            self.assertIsNotNone(rdata)
             # rdata looks like
             # {
             #     'description': '',
@@ -133,13 +98,12 @@ class TestSimulation(unittest.TestCase):
         Test creation of just one simulton.
         python3 -m unittest -k test_one_simulton tests/simulation_test.py
         """
-        assert self.restc is not None
-        (status_code, rdata) = self.restc.get(simulation_uri)
-        self.assertTrue(status_code, 200)
+        assert self._client is not None
+        rdata = self._client.get_simulation()
         expected = {'state': 'PAUSED', 'rate': 0}
         self.assertEqual(rdata, expected)
-        (status_code, rdata) = self.restc.get(simultons_uri)
-        self.assertTrue(status_code, 200)
+
+        rdata = self._client.get_simultons()
         expected = {}
         self.assertEqual(rdata, expected)
 
@@ -166,14 +130,13 @@ class TestSimulation(unittest.TestCase):
             watch -c -n 0.1  pstree -p <shell-pid> -Ut
         """
         N = 15
-        assert self.restc is not None
-        (status_code, rdata) = self.restc.get(simulation_uri)
-        self.assertTrue(status_code, 200)
+
+        assert self._client is not None
+        rdata = self._client.get_simulation()
         expected = {'state': 'PAUSED', 'rate': 0}
         self.assertEqual(rdata, expected)
 
-        (status_code, rdata) = self.restc.get(simultons_uri)
-        self.assertTrue(status_code, 200)
+        rdata = self._client.get_simultons()
         expected = {}
         self.assertEqual(rdata, expected)
         #
@@ -184,8 +147,7 @@ class TestSimulation(unittest.TestCase):
         now = time.time()
         print(f'Created {N} simultons in {now - start} secs')
 
-        (status_code, rdata) = self.restc.get(simultons_uri)
-        self.assertTrue(status_code, 200)
+        rdata = self._client.get_simultons()
         self.assertEqual(len(rdata), len(sims))
         self.assertIsInstance(rdata, dict)
 

@@ -29,6 +29,7 @@ from .simulton import Simulton, shut_the_process
 from .elevator import Elevator
 from .clock import Clock
 from .simulation import Simulation, SimultonProxy, theSimulation
+from .simulation_client import SimulationClient
 
 __version__ = '0.1.0'
 
@@ -75,4 +76,6 @@ __all__ = [
     'SimulationState',
     'theSimulation',
     'SimultonProxy',
+    # simulation_client.py
+    'SimulationClient',
 ]

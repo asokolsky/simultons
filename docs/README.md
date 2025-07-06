@@ -120,16 +120,6 @@ To run unit test:
 python -m unittest tests/simulation_test.py
 ```
 
-to find out if fastapi is running:
-```sh
-ps ax|grep fastapi
-```
-
-To find out who binds port 5556:
-```
-sudo lsof -i4 |grep LISTEN|grep 5556
-```
-
 ## How to use it
 
 ```sh
@@ -142,17 +132,25 @@ To watch the simulton processes:
 2. then
 
 ```
-watch -c -n 0.1  pstree -p <pid> -Ut
+watch -c -n 0.1 pstree -p <pid> -Ut
 ```
 
-### Troubleshooting
+## Troubleshooting
 
 If you get
 ```
 [Errno 98] error while attempting to bind on address ('127.0.0.1', 9000): address already in use
 ```
-use
-```
+Identify the pid of the process using port 9000 and kill it:
+```sh
 lsof -i :9000
 ```
-to identify the pid of the process and then just kill it.
+Alternatively, to find out who binds port 5556:
+```sh
+sudo lsof -i4 |grep LISTEN|grep 5556
+```
+
+To find out if `fastapi` is running:
+```sh
+ps ax|grep fastapi
+```
