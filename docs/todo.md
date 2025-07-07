@@ -2,6 +2,8 @@
 
 ## TODO
 
+* use python logging with configuration stored in a dedicated YAML settings file
+* introduce application(s) config YAML file, e.g. to set ports
 * use python `with-as` pattern (see [contextlib](https://docs.python.org/3/library/contextlib.html)) to allow for creation of universe filled with simultons;
 * full blow simulation of riders/elevators;
 * API-based JavaScript GUI for the elevator simulation.

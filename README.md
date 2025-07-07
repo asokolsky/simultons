@@ -54,7 +54,7 @@ Follow [documentation](https://zeromq.org/download/) to install:
 
 For MacOS:
 ```sh
-brew install zmq
+brew install zeromq
 ```
 
 For Linux:

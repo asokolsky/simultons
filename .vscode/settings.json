@@ -5,6 +5,7 @@
         "jresp",
         "mypy",
         "pydantic",
+        "rdata",
         "restc",
         "Simulton",
         "simultons",

@@ -20,7 +20,7 @@ class TestClockSimulton(unittest.TestCase):
         Launch the simulton - usually this is done by the simulation process.
         """
         print('TestClockSimulton.setUpClass')
-        cls._service = SimultonProxy('simultons/clock.py', 9000)
+        cls._service = SimultonProxy('simultons/clock.py', 9100)
         assert cls._service.launch()
         assert cls._service.wait_until_reachable() is not None
         # save the client

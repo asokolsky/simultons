@@ -10,8 +10,8 @@ from simultons import (
     FastLauncher,
     NewSimultonParams,
     SimulationRequest,
-    SimulationResponse,
     SimulationState,
+    load_settings,
     rest_client,
 )
 
@@ -30,9 +30,16 @@ class SimulationClient:
         return
 
     def setUp(self) -> None:
-        self._service = FastLauncher('simultons/simulation.py', 9000)
+        self._settings = load_settings()
+        print('settings:', self._settings)
+        assert isinstance(self._settings, dict)
+        sim_settings = self._settings['simulation']
+        assert isinstance(sim_settings, dict)
+        port = sim_settings['port']
+        source = sim_settings['source']
+        self._service = FastLauncher(source, port)
         pid = self._service.launch()
-        print('FastLauncher(simultons/simulation.py, 9000).launch() => ', pid)
+        print(f'FastLauncher({source}, {port}).launch() => ', pid)
         res = self._service.wait_until_reachable(self.api_uri)
         print(f'wait_until_reachable({self.api_uri}) => ', res)
         expected = {'state': 'PAUSED', 'rate': 0.0}

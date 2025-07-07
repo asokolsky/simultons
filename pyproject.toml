@@ -8,6 +8,7 @@ dependencies = [
     "fastapi-utils>=0.8.0",
     "fastapi[standard]>=0.115.14",
     "httpx>=0.28.1",
+    "pyyaml>=6.0.2",
     "pyzmq>=27.0.0",
     "strip-ansi>=0.1.1",
 ]
@@ -16,6 +17,7 @@ dependencies = [
 dev = [
     "mypy>=1.16.1",
     "ruff>=0.12.1",
+    "types-pyyaml>=6.0.12.20250516",
     "typing-inspect>=0.9.0",
 ]
 

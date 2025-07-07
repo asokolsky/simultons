@@ -21,6 +21,7 @@ from . import (
     SimultonRequest,
     SimultonResponse,
     Message,
+    load_settings,
     shut_the_process,
 )
 
@@ -141,7 +142,12 @@ class Simulation:
         self._zsocket.bind(self._zspec)
         # simulton accumulator
         self._simultons: dict[int, SimultonProxy] = {}
-        self._next_simulton_port = 9500
+        settings = load_settings()
+        print('settings:', settings)
+        assert isinstance(settings, dict)
+        sim_settings = settings['simulation']
+        assert isinstance(sim_settings, dict)
+        self._next_simulton_port = sim_settings['first_simulton_port']
         return
 
     async def broadcast_state_update(self) -> None:

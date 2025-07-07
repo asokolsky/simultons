@@ -1,0 +1,13 @@
+#
+# Simultons Software Settings
+#
+simulation:
+  source: simultons/simulation.py
+  #host: localhost
+  port: 9100
+  first_simulton_port: 9110
+  #rate: 1
+  #log_level: DEBUG
+simultons:
+  #host: localhost
+  first_port: 9110

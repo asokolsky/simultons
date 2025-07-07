@@ -21,6 +21,7 @@ from .schemas import (
     SimultonRequest,
     SimultonResponse,
 )
+from .settings import load_settings
 from .wait import wait_until_reachable
 
 # order is important to avoid circular dependency!
@@ -76,6 +77,8 @@ __all__ = [
     'SimulationState',
     'theSimulation',
     'SimultonProxy',
+    # settings.py
+    'load_settings',
     # simulation_client.py
     'SimulationClient',
 ]

@@ -24,7 +24,7 @@ class TestSimulton(unittest.TestCase):
         For all the tests
         """
         print('TestSimulton.setUpClass')
-        cls._service = SimultonProxy('simultons/elevator.py', 9000)
+        cls._service = SimultonProxy('simultons/elevator.py', 9100)
         #
         # start the simulton process
         #
