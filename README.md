@@ -2,10 +2,11 @@
 
 This is a work in progress, not ready for a public review.
 
-I wanted to:
+I wanted to play with:
 
-* play with elevator simulation
-* play with using [FastAPI](https://fastapi.tiangolo.com/) for microservices
+* elevator simulation;
+* [FastAPI](https://fastapi.tiangolo.com/) for microservices;
+* `uv` - based toolchain which seems to offer such performance advantages.
 
 It also appeared that [ZeroMQ](https://zeromq.org/) is a perfect fit to make
 things work together.
@@ -16,7 +17,7 @@ Simulton is:
 * which is a separate process,
 * exposing some REST APIs
 
-More [documents](./docs/).
+More [docs](./docs/).
 
 ## Unrelated
 
