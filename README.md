@@ -27,7 +27,7 @@ recommended and is NOT used in this project.
 
 ## Docs Roadmap
 
-There is a single [simulation](simulation.md) which provides context for a [simulton](docs/simulton.md)s.  Read more on:
+There is a single [simulation](docs/simulation.md) which provides context for a [simulton](docs/simulton.md)s.  Read more on:
 
 * [Architecture](docs/architecture.md);
 * [TODOs](docs/todo.md)
@@ -82,7 +82,7 @@ Current  pyzmq version is 26.2.0
 
 ### Python Dependencies
 
-..are handled using virtual environment.
+..are handled via virtual environment using `uv`:
 
 `pydeps fastapi` gives:
 
