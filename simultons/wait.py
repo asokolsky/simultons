@@ -44,7 +44,9 @@ def wait_until_reachable(
                     f'::wait_until_reachable({url}, {timeout}) => {x},'
                     f' after {time.time() - start:.2f} secs'
                 )
-                return x.json()
+                res = x.json()
+                assert isinstance(res, dict)
+                return res
 
             assert False, 'What do we do now?'
 
