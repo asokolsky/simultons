@@ -22,8 +22,11 @@ from . import (
     SimultonResponse,
     Message,
     load_settings,
+    setup_logging,
     shut_the_process,
 )
+
+log = setup_logging(__name__)
 
 
 class SimultonProxy(Simulton):
@@ -65,7 +68,7 @@ class SimultonProxy(Simulton):
 
     def wait_until_reachable(self, timeout: int = 20) -> bool:
         jresp = self._launcher.wait_until_reachable(self.simulton_uri, timeout)
-        print(f'wait_until_reachable({self.simulton_uri}) =>', jresp)
+        log.debug(f'wait_until_reachable({self.simulton_uri}) => {jresp}')
         assert isinstance(jresp, dict)
         self.description = jresp['description']
         self.rate = jresp['rate']
@@ -133,6 +136,9 @@ class Simulation:
         """
         Initializer
         """
+        # reset uvicorn logger
+        setup_logging(__name__)
+        # init members
         self._state = SimulationState.INIT
         # start in paused
         self._rate = 0.0
@@ -143,7 +149,7 @@ class Simulation:
         # simulton accumulator
         self._simultons: dict[int, SimultonProxy] = {}
         settings = load_settings()
-        print('settings:', settings)
+        log.debug(f'settings: {settings}')
         assert isinstance(settings, dict)
         sim_settings = settings['simulation']
         assert isinstance(sim_settings, dict)
@@ -158,7 +164,7 @@ class Simulation:
             state=self._state, rate=self._rate
         ).model_dump_json()
         assert self._zsocket is not None
-        print('Broadcasting state update:', message)
+        log.debug(f'Broadcasting state update: {message}')
         self._zsocket.send_string(f'{self._ztopic} {message}')
         return
 
@@ -170,7 +176,7 @@ class Simulation:
     async def setState(self, state: SimulationState) -> SimulationState:  # noqa: N802
         if self._state == state:
             return state
-        print(f'Simulation state {self._state} -> {state}')
+        log.debug(f'Simulation state {self._state} -> {state}')
         # update the state first
         self._state = state
         await self.broadcast_state_update()
@@ -193,7 +199,7 @@ class Simulation:
     def rate(self, rate: float) -> float:
         if self._rate == rate:
             return rate
-        print(f'Simulation rate {self._rate} -> {rate}')
+        log.debug(f'Simulation rate {self._rate} -> {rate}')
         self._rate = rate
         return self._rate
 
@@ -216,7 +222,7 @@ class Simulation:
         """
         State just transitioned to RUNNING
         """
-        print('Simulation.on_running')
+        log.debug('Simulation.on_running')
         for s in self._simultons.values():
             s.run(self._rate)
         return
@@ -225,21 +231,21 @@ class Simulation:
         """
         State just transitioned to PAUSED
         """
-        print('Simulation.on_paused')
+        log.debug('Simulation.on_paused')
         return
 
     def on_shutting(self) -> None:
         """
         Simulation state just transitioned to SHUTTING
         """
-        print('Simulation.on_shutting', self)
+        log.debug(f'Simulation.on_shutting {self}')
         return
 
     async def on_startup(self) -> None:
         """
         Simulation FastAPI startup event handler
         """
-        print('Simulation.on_startup')
+        log.debug('Simulation.on_startup')
         await self.setState(SimulationState.PAUSED)
         return
 
@@ -247,12 +253,12 @@ class Simulation:
         """
         Simulation FastAPI shutdown event handler
         """
-        print('Simulation.on_shutdown', self)
+        log.debug(f'Simulation.on_shutdown {self}')
         await self.setState(SimulationState.SHUTTING)
-        print('Shutting the simultons')
+        log.debug('Shutting the simultons')
         for s in self._simultons.values():
             s.shutdown()
-        print('Closing zmq publisher')
+        log.debug('Closing zmq publisher')
         # close the zmq publisher
         # to avoid hanging infinitely
         self._zsocket.setsockopt(zmq.LINGER, 0)
@@ -288,7 +294,7 @@ app = FastAPI(title='simulation', description='Simulation API', version='0.0.1')
 
 @app.on_event('startup')
 async def startup_event() -> None:
-    print('simulation startup_event')
+    log.debug('simulation startup_event')
     global theSimulation
     theSimulation = Simulation()
     await theSimulation.on_startup()
@@ -297,7 +303,7 @@ async def startup_event() -> None:
 
 @app.on_event('shutdown')
 async def shutdown_event() -> None:
-    print('simulation shutdown_event')
+    log.debug('simulation shutdown_event')
     global theSimulation
     assert theSimulation is not None
     await theSimulation.on_shutdown()

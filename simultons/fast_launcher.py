@@ -10,7 +10,9 @@ from pathlib import Path
 
 from strip_ansi import strip_ansi
 
-from . import rest_client, wait_until_reachable
+from . import rest_client, setup_logging, wait_until_reachable
+
+log = setup_logging(__name__)
 
 
 class FastLauncher:
@@ -65,7 +67,7 @@ class FastLauncher:
             str(1),
             self._path,
         ]
-        print('cwd:', parent_dir, 'command_line:', *command_line)
+        log.debug(f'cwd: {parent_dir} command_line: {command_line}')
         self._popen = subprocess.Popen(  # noqa: S603
             command_line,
             cwd=parent_dir,
@@ -86,32 +88,27 @@ class FastLauncher:
     def wait_to_die(self, timeout: float = 0.5) -> bool:
         assert self._popen is not None
         if self._popen.returncode is not None:
-            print(
-                f'Process {self._popen.pid} already terminated with ec:',
-                self._popen.returncode,
+            log.info(
+                f'Pid {self._popen.pid} already terminated with ec: {self._popen.returncode}'
             )
             return True
         #
         # wait for the process to actually terminate
         #
-        print('Waiting for upto', timeout, 'secs for', self._popen.pid, 'to die...')
+        log.info(f'Waiting for upto {timeout} secs for {self._popen.pid} to die...')
         start = time.time()
         try:
             self._popen.wait(timeout)
             # the process has terminated
             elapsed = time.time() - start
-            print(
-                self._popen.pid,
-                'died after',
-                f'{elapsed:.3f}',
-                'secs, ec:',
-                self._popen.returncode,
+            log.info(
+                f'{self._popen.pid} died after {elapsed:.3f} secs, ec: {self._popen.returncode}'
             )
             return True
 
         except subprocess.TimeoutExpired:
-            print(
-                f'Waiting for {self._popen.pid} to die timed out after', timeout, 'secs'
+            log.info(
+                f'Waiting for {self._popen.pid} to die timed out after {timeout} secs'
             )
         return False
 
@@ -124,9 +121,9 @@ class FastLauncher:
             try:
                 os.kill(self._popen.pid, signal.SIGINT)
             except ProcessLookupError:
-                print('Failed to locate process:', self._popen.pid)
+                log.info(f'Failed to locate pid {self._popen.pid}')
         else:
-            print('FastAPI is already down, ec:', self._popen.returncode)
+            log.info(f'FastAPI is already down, ec: {self._popen.returncode}')
         #
         # wait for the process to actually terminate
         #
@@ -139,38 +136,28 @@ class FastLauncher:
         try:
             stdout_value, stderr_value = self._popen.communicate()
         except Exception as err:
-            print('Caught while tying to communicate with', self._popen.pid, err)
+            log.info(f'Caught while tying to communicate with {self._popen.pid}: {err}')
 
         dashes = '==========================='
         output_produced = False
         if stdout_value:
             if isinstance(stdout_value, (bytes, bytearray)):
                 stdout_value = stdout_value.decode()
-            print(
-                dashes,
-                self._path,
-                self._popen.pid,
-                'stdout',
-                dashes,
-                '\n',
-                strip_ansi(stdout_value),
-            )
+            log.info(f'{dashes} {self._path} {self._popen.pid} stdout {dashes}')
+            for line in strip_ansi(stdout_value).splitlines():
+                if line:
+                    log.info(f'{line}')
             output_produced = True
         if stderr_value:
             if isinstance(stderr_value, (bytes, bytearray)):
                 stderr_value = stderr_value.decode()
-            print(
-                dashes,
-                self._path,
-                self._popen.pid,
-                'stderr',
-                dashes,
-                '\n',
-                strip_ansi(stderr_value),
-            )
+            log.info(f'{dashes} {self._path} {self._popen.pid} stderr {dashes}')
+            for line in strip_ansi(stderr_value).splitlines():
+                if line:
+                    log.info(f'{line}')
             output_produced = True
         if output_produced:
-            print(dashes, self._path, self._popen.pid, 'end', dashes)
+            log.info(f'{dashes} {self._path} {self._popen.pid} end {dashes}')
 
         # close the socket
         if self._restc is not None:

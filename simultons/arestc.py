@@ -8,6 +8,10 @@ from urllib.parse import urljoin
 
 import httpx
 
+from . import setup_logging
+
+log = setup_logging(__name__)
+
 
 class async_rest_client:
     """
@@ -37,7 +41,7 @@ class async_rest_client:
             return
         if data is None:
             data = ''
-        print('HTTP', method, urljoin(self.base_url, uri), data, '...')
+        log.debug(f'HTTP {method} {urljoin(self.base_url, uri)} {data} ...')
         return
 
     def print_resp(self, method: str, resp: httpx.Response) -> None:
@@ -46,11 +50,11 @@ class async_rest_client:
                 jresp = resp.json()
             except JSONDecodeError:
                 jresp = resp
-            print('HTTP', method, '=>', resp.status_code, str(jresp))
+            log.debug(f'HTTP {method} => {resp.status_code} {jresp}')
         if self.dumpHeaders:
-            print('HTTP Response Headers:')
+            log.debug('HTTP Response Headers:')
             for h in resp.headers:
-                print('   ', h, ':', resp.headers[h])
+                log.debug(f'   {h}: {resp.headers[h]}')
         return
 
     async def get(self, uri: str) -> tuple[int, Any]:
@@ -80,7 +84,7 @@ class async_rest_client:
         try:
             jresp = resp.json()
         except JSONDecodeError as err:
-            print('Caught: ', err)
+            log.info(f'Caught: {err}')
             jresp = resp
         return (resp.status_code, jresp)
 
@@ -111,7 +115,7 @@ class async_rest_client:
         try:
             jresp = resp.json()
         except JSONDecodeError as err:
-            print('Caught: ', err)
+            log.info(f'Caught: {err}')
             jresp = resp
         return (resp.status_code, jresp)
 
@@ -127,6 +131,6 @@ class async_rest_client:
         try:
             jresp = resp.json()
         except JSONDecodeError as err:
-            print('Caught: ', err)
+            log.info(f'Caught: {err}')
             jresp = resp
         return (resp.status_code, jresp)

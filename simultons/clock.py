@@ -14,7 +14,10 @@ from . import (
     NewClockParams,
     ClockResponse,
     Message,
+    setup_logging,
 )
+
+log = setup_logging(__name__)
 
 
 class Clock:
@@ -41,7 +44,7 @@ class Clock:
         """
         Simulation pause event handler
         """
-        print('Clock.on_paused')
+        log.debug('Clock.on_paused')
         assert self._sim.is_paused()
         rate = self._sim._rate
         assert rate != 0
@@ -55,7 +58,7 @@ class Clock:
         """
         Simulation run event handler
         """
-        print('Clock.on_running')
+        log.debug('Clock.on_running')
         assert self._sim.is_running()
         assert rate > 0
         if self._last_start == 0:
@@ -99,7 +102,7 @@ class ClockSimulton(Simulton):
         """
         State just transitioned to RUNNING
         """
-        print('ClockSimulton.on_running')
+        log.debug('ClockSimulton.on_running')
         # notify all the clocks about the change
         for clock in self.instances.values():
             clock.on_running(self._rate)
@@ -109,7 +112,7 @@ class ClockSimulton(Simulton):
         """
         State just transitioned to PAUSED
         """
-        print('ClockSimulton.on_paused')
+        log.debug('ClockSimulton.on_paused')
         # notify all the clocks about the change
         for clock in self.instances.values():
             clock.on_paused()
@@ -122,7 +125,7 @@ app = ClockSimulton.create_app()
 
 @app.on_event('startup')
 async def startup_event() -> None:
-    print('clock simulton startup_event')
+    log.debug('clock simulton startup_event')
     global theClockSimulton
     theClockSimulton = ClockSimulton()
     theClockSimulton.on_startup()
@@ -132,7 +135,7 @@ async def startup_event() -> None:
 @app.on_event('shutdown')
 async def shutdown_event() -> None:
     global theClockSimulton
-    print('clock simulton shutdown_event', theClockSimulton)
+    log.debug(f'clock simulton shutdown_event {theClockSimulton}')
     assert theClockSimulton is not None
     theClockSimulton.on_shutdown()
     theClockSimulton = None
@@ -141,7 +144,7 @@ async def shutdown_event() -> None:
 
 @app.get('/api/v1/simulton', response_model=SimultonResponse)
 async def get_simulton() -> SimultonResponse:
-    print('get clock simulton')
+    log.debug('get clock simulton')
     # global theClockSimulton
     assert theClockSimulton is not None
     return theClockSimulton.to_response()

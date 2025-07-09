@@ -1,0 +1,64 @@
+import logging
+import logging.config
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+#
+# contents of logging.yaml
+#
+logging_config: dict | None = None
+
+
+def load_logging_config() -> dict | None:
+    """
+    Load logging config from `logging.yaml`
+    """
+    parent_dir = Path(__file__).absolute().parents[1]
+    path = parent_dir / 'logging.yaml'
+    with path.open('r') as file:
+        try:
+            config = yaml.safe_load(file.read())
+            assert isinstance(config, dict)
+            # print('load_logging_config', config)
+            return config
+        except FileNotFoundError:
+            print(f'Error: logging settings {path} not found.')
+        except yaml.YAMLError as err:
+            print(f'Error: parsing {path}: {err}')
+    return None
+
+
+def setup_logging(logger_name: str | None, level: int = logging.NOTSET) -> Any:
+    """
+    Setup the logger `logger_name`
+    """
+    global logging_config
+    if logging_config is None:
+        logging_config = load_logging_config()
+    # repetitive calls can be useful
+    if logging_config is None:
+        # set the defaults
+        logging.basicConfig(level=level)
+    else:
+        # set the logging according to the `logging.yaml`
+        logging.config.dictConfig(logging_config)
+    logger = logging.getLogger(logger_name)
+    if level != logging.NOTSET:
+        logger.setLevel(level)
+    # logger.propagate = False
+    assert logger is not None
+    # print('setup_logging() =>', logger)
+    # print_logging_tree()
+    return logger
+
+
+def print_logging_tree() -> None:
+    """
+    See https://pypi.org/project/logging-tree/
+    """
+    from logging_tree import printout  # noqa: PLC0415
+
+    printout()
+    return

@@ -1,7 +1,15 @@
 import time
 import unittest
 
-from simultons import ClockResponse, NewClockParams, SimultonProxy, rest_client
+from simultons import (
+    ClockResponse,
+    NewClockParams,
+    SimultonProxy,
+    rest_client,
+    setup_logging,
+)
+
+log = setup_logging(__name__)
 
 clocks_uri = '/api/v1/clocks/'
 
@@ -19,7 +27,7 @@ class TestClockSimulton(unittest.TestCase):
         """
         Launch the simulton - usually this is done by the simulation process.
         """
-        print('TestClockSimulton.setUpClass')
+        log.info('TestClockSimulton.setUpClass')
         cls._service = SimultonProxy('simultons/clock.py', 9100)
         assert cls._service.launch()
         assert cls._service.wait_until_reachable() is not None
@@ -32,7 +40,7 @@ class TestClockSimulton(unittest.TestCase):
         """
         Shut the simulton process
         """
-        print('TestClockSimulton.tearDownClass')
+        log.info('TestClockSimulton.tearDownClass')
         # request the shutdown
         assert cls._service is not None
         cls._service.shutting()
@@ -75,6 +83,7 @@ class TestClockSimulton(unittest.TestCase):
         assert self.restc is not None
         (status_code, rdata) = self.restc.get(f'{clocks_uri}{clock_id}')
         self.assertEqual(status_code, 200)
+        assert isinstance(rdata, dict)
         return rdata
 
     def get_nonexistent_clock(self) -> None:
@@ -107,7 +116,7 @@ class TestClockSimulton(unittest.TestCase):
         self.del_nonexistent_clock()
 
         clocks = self.create_clocks(1)
-        print(clocks)
+        log.info(f'Clocks: {clocks}')
         theClockId = ''
         for id in clocks:
             theClockId = id
@@ -116,6 +125,7 @@ class TestClockSimulton(unittest.TestCase):
         rdata = self.get_time(theClockId)
         self.assertEqual(rdata, clocks[theClockId])
         # clock was never started yet
+        assert isinstance(rdata, dict)
         self.assertEqual(rdata['time'], 0.0)
 
         # pause it
@@ -131,9 +141,10 @@ class TestClockSimulton(unittest.TestCase):
 
         # retrieve the theClockId clock
         rdata = self.get_time(theClockId)
+        assert isinstance(rdata, dict)
         self.assertTrue(rdata['time'] > 0.0)
         self.assertTrue(rdata['time'] > duration)
-        print('I slept for', duration, 'clock', rdata['time'])
+        log.info(f'I slept for {duration} clock {rdata["time"]}')
 
         times = 10
         for _ in range(10):
@@ -148,7 +159,7 @@ class TestClockSimulton(unittest.TestCase):
         rdata = self.get_time(theClockId)
         self.assertTrue(rdata['time'] > 0.0)
         self.assertTrue(rdata['time'] > duration)
-        print('I slept for', duration * (times + 1), 'clock', rdata['time'])
+        log.info(f'I slept for {duration * (times + 1)} clock {rdata["time"]}')
 
         self.get_nonexistent_clock()
         self.del_nonexistent_clock()

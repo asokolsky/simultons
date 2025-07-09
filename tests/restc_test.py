@@ -11,7 +11,9 @@ from json import loads
 
 import httpx
 
-from simultons import async_rest_client, rest_client
+from simultons import async_rest_client, rest_client, setup_logging
+
+log = setup_logging(__name__)
 
 uris = [
     '/ip',
@@ -97,6 +99,8 @@ class TestRestC(unittest.TestCase):
         self.assertIn('origin', rdata)
         self.assertIn('headers', rdata)
         headers = rdata['headers']
+        assert isinstance(headers, dict)
+        assert isinstance(expected['headers'], dict)
         # self.assertEqual(len(headers), 6)
         for hdr in ('Accept', 'Accept-Encoding', 'Host', 'User-Agent'):
             self.assertEqual(headers[hdr], expected['headers'][hdr])
@@ -149,6 +153,8 @@ class TestRestC(unittest.TestCase):
 
         self.assertIn('headers', rdata)
         headers = rdata['headers']
+        assert isinstance(headers, dict)
+        assert isinstance(expected['headers'], dict)
         # self.assertEqual(len(headers), 6)
         for hdr in ('Accept', 'Accept-Encoding', 'Host', 'User-Agent'):
             self.assertEqual(headers[hdr], expected['headers'][hdr])
@@ -188,6 +194,8 @@ class TestRestC(unittest.TestCase):
 
         self.assertIn('headers', rdata)
         headers = rdata['headers']
+        assert isinstance(headers, dict)
+        assert isinstance(expected['headers'], dict)
         for hdr in ('Accept', 'Accept-Encoding', 'Host', 'User-Agent'):
             self.assertEqual(headers[hdr], expected['headers'][hdr])
         return
@@ -234,6 +242,8 @@ class TestRestC(unittest.TestCase):
         self.assertIn('origin', rdata)
         self.assertIn('headers', rdata)
         headers = rdata['headers']
+        assert isinstance(headers, dict)
+        assert isinstance(expected['headers'], dict)
         for hdr in ('Accept', 'Accept-Encoding', 'Host', 'User-Agent'):
             self.assertEqual(headers[hdr], expected['headers'][hdr])
         return
@@ -280,6 +290,8 @@ class TestRestC(unittest.TestCase):
         self.assertIn('origin', rdata)
         self.assertIn('headers', rdata)
         headers = rdata['headers']
+        assert isinstance(headers, dict)
+        assert isinstance(expected['headers'], dict)
         for hdr in ('Accept', 'Accept-Encoding', 'Host', 'User-Agent'):
             self.assertEqual(headers[hdr], expected['headers'][hdr])
         return
@@ -293,14 +305,14 @@ class TestRestC(unittest.TestCase):
         """
         Try to GET multiple URIs in parallel
         """
-        print(f'Retrieving {len(uris)} URIs in parallel')
+        log.info(f'Retrieving {len(uris)} URIs in parallel')
         start = time.time()
 
         results = await asyncio.gather(*(self.acl.get(uri) for uri in uris))
 
         elapsed = time.time() - start
-        print(results)
-        print(f'Retrieved {len(uris)} URIs in {elapsed:.3f} secs')
+        log.info(results)
+        log.info(f'Retrieved {len(uris)} URIs in {elapsed:.3f} secs')
         return
 
     def test_multiple_gets_parallel(self) -> None:
@@ -319,14 +331,14 @@ class TestRestC(unittest.TestCase):
         To run just this test:
         python3 -m unittest -k test_multiple_gets_s tests/restc_test.py
         """
-        print(f'Retrieving {len(uris)} URIs sequentially')
+        log.info(f'Retrieving {len(uris)} URIs sequentially')
         start = time.time()
 
         for uri in uris:
             self.cl.get(uri)
 
         elapsed = time.time() - start
-        print(f'Retrieved {len(uris)} URIs in {elapsed:.3f} secs')
+        log.info(f'Retrieved {len(uris)} URIs in {elapsed:.3f} secs')
 
         # produces:
         # Retrieved 6 URIs in 4.805 secs

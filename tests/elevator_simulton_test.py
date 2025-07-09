@@ -2,10 +2,13 @@ import unittest
 
 from fastapi.testclient import TestClient
 
-from simultons import ElevatorResponse, NewElevatorParams
+from simultons import ElevatorResponse, NewElevatorParams, setup_logging
 from simultons.elevator import app
 
 elevators_uri = '/api/v1/elevators/'
+
+log = setup_logging(__name__)
+
 
 class TestElevatorSimultonWithTestClient(unittest.TestCase):
     """
@@ -38,7 +41,7 @@ class TestElevatorSimultonWithTestClient(unittest.TestCase):
             names = ['foo', 'bar', 'baz']
             for name in names:
                 params = NewElevatorParams(name=name, floors=floors)
-                print('posting:', params.model_dump())
+                log.info(f'posting: {params.model_dump()}')
                 response = client.post(elevators_uri, json=params.model_dump())
                 self.assertTrue(response.status_code, 201)
                 jresp = response.json()
@@ -55,8 +58,8 @@ class TestElevatorSimultonWithTestClient(unittest.TestCase):
             for id, el in jresp.items():
                 response = client.get(f'{elevators_uri}{id}')
                 expected = ElevatorResponse(id=id, name=el['name'], floors=floors)
-                print('received:', response.json())
-                print('expected:', expected.model_dump())
+                log.info(f'received: {response.json()}')
+                log.info(f'expected: {expected.model_dump()}')
                 self.assertEqual(response.json(), expected.model_dump())
 
         return

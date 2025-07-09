@@ -6,7 +6,7 @@ I wanted to play with:
 
 * elevator simulation;
 * [FastAPI](https://fastapi.tiangolo.com/) for microservices;
-* `uv` - based toolchain which seems to offer such performance advantages.
+* [uv](https://github.com/astral-sh/uv)-based toolchain which seems to offer such performance advantages.
 
 It also appeared that [ZeroMQ](https://zeromq.org/) is a perfect fit to make
 things work together.
@@ -46,7 +46,7 @@ For now, the play is limited to running unit tests - see blow.
 
 * python
 * [uv](https://github.com/astral-sh/uv)
-* ZeroMQ
+* [ZeroMQ](https://zeromq.org/)
 
 ### ZeroMQ
 

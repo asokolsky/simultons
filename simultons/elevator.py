@@ -17,8 +17,11 @@ from . import (
     Simulton,
     SimultonRequest,
     SimultonResponse,
+    setup_logging,
 )
 from .simulton import get_random_id
+
+log = setup_logging(__name__)
 
 
 class LoadValue(StrEnum):
@@ -218,7 +221,7 @@ app = ElevatorSimulton.create_app()
 
 @app.on_event('startup')
 async def startup_event() -> None:
-    print('elevators startup_event')
+    log.debug('elevators startup_event')
     global theElevatorSimulton
     theElevatorSimulton = ElevatorSimulton()
     theElevatorSimulton.on_startup()
@@ -228,7 +231,7 @@ async def startup_event() -> None:
 @app.on_event('shutdown')
 async def shutdown_event() -> None:
     global theElevatorSimulton
-    print('elevators shutdown_event', theElevatorSimulton)
+    log.debug(f'elevators shutdown_event {theElevatorSimulton}')
     assert theElevatorSimulton is not None
     theElevatorSimulton.on_shutdown()
     theElevatorSimulton = None
@@ -237,7 +240,7 @@ async def shutdown_event() -> None:
 
 @app.get('/api/v1/simulton', response_model=SimultonResponse)
 async def get_simulton() -> SimultonResponse:
-    print('get elevator simulton')
+    log.debug('get elevator simulton')
     # global theElevatorSimulton
     assert theElevatorSimulton is not None
     return theElevatorSimulton.to_response()

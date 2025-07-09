@@ -1,0 +1,62 @@
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  standard:
+    format: "%(asctime)s <%(process)d:%(processName)s> %(levelname)s %(name)s %(message)s"
+  error:
+    format: "%(levelname)s <PID %(process)d:%(processName)s> %(name)s.%(funcName)s(): %(message)s"
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    #level: DEBUG
+    formatter: standard
+    stream: ext://sys.stdout
+
+  error_console:
+    class: logging.StreamHandler
+    level: ERROR
+    formatter: error
+    stream: ext://sys.stderr
+
+root:
+  level: INFO
+  handlers: [console]
+  propagate: yes
+
+loggers:
+  asyncio:
+    level: DEBUG
+    #handlers: [console]
+    #propagate: no
+  fastapi:
+    level: DEBUG
+    #handlers: [console]
+    #propagate: no
+  fastapi_cli:
+    level: DEBUG
+    #handlers: [console]
+    #propagate: no
+  httpcore:
+    level: INFO
+  httpx:
+    level: WARNING
+  simultons:
+    level: DEBUG
+    #handlers: [console]
+    #propagate: no
+  simultons.wait:
+    level: INFO
+  tests:
+    level: DEBUG
+    handlers: [console]
+    propagate: no
+  uvicorn:
+    level: DEBUG
+    handlers: [console]
+    propagate: no
+  werkzeug:
+    level: DEBUG
+    #handlers: [console]
+    #propagate: no

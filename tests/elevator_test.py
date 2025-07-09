@@ -4,7 +4,9 @@ Testing the elevator-related stuff
 
 import unittest
 
-from simultons import Elevator
+from simultons import Elevator, setup_logging
+
+log = setup_logging(__name__)
 
 
 class TestElevator(unittest.TestCase):
@@ -24,5 +26,5 @@ class TestElevator(unittest.TestCase):
         """
         Test Elevator functionality
         """
-        print(self.el)
+        log.info(self.el)
         return

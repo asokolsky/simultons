@@ -2,20 +2,22 @@
 Run the simulation and possibly some simultons
 """
 
-from . import SimulationClient
+from . import SimulationClient, setup_logging
+
+log = setup_logging(__name__)
 
 
 def main() -> int:
     """
     Run the simulation
     """
-    print('Launching simulation')
+    log.debug('Launching simulation')
     client = SimulationClient()
-    client.setUp()
+    client.set_up()
     #
     # do something with your life
     #
-    client.tearDown()
+    client.tear_down()
     return 0
 
 

@@ -3,6 +3,13 @@
 Unfortunately, short answer is "it depends".
 Because FastAPI is just an "ASGI app".  If this does not help, I'm with you.
 
+
+Sources:
+
+* https://github.com/fastapi/fastapi
+* https://github.com/fastapi/fastapi-cli
+* https://github.com/encode/uvicorn
+
 #### Option 1: launch it using fastapi cli:
 
 ```
@@ -20,7 +27,7 @@ Because FastAPI is just an "ASGI app".  If this does not help, I'm with you.
 ```
 #### Option 2: launch it using uvicorn programmatic API:
 
-uvicorn is used y FastAPI by default anyway...
+uvicorn is used by FastAPI by default anyway...
 
 ```
 import fastapi

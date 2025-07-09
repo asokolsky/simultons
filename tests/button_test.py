@@ -5,7 +5,9 @@ Testing all the button-related stuff
 import unittest
 from typing import ClassVar
 
-from simultons import Button, ButtonWithLed, ButtonWithLedPanel
+from simultons import Button, ButtonWithLed, ButtonWithLedPanel, setup_logging
+
+log = setup_logging(__name__)
 
 
 class TestButton(unittest.TestCase):

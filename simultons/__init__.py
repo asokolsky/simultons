@@ -3,6 +3,7 @@ Playing with FastAPI, pydantic while simulating stuff
 """
 
 # ruff: noqa: I001
+from .logging import setup_logging, print_logging_tree
 from .arestc import async_rest_client
 from .button import Button, ButtonWithLed, ButtonWithLedPanel
 from .restc import rest_client
@@ -81,4 +82,7 @@ __all__ = [
     'load_settings',
     # simulation_client.py
     'SimulationClient',
+    # logging.py
+    'setup_logging',
+    'print_logging_tree',
 ]

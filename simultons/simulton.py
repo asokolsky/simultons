@@ -30,7 +30,10 @@ from . import (
     SimultonRequest,
     SimultonResponse,
     SimultonState,
+    setup_logging,
 )
+
+log = setup_logging(__name__)
 
 
 def get_random_id() -> str:
@@ -44,7 +47,7 @@ async def shut_the_process() -> None:
     """
     pid = os.getpid()
     os.kill(pid, signal.SIGTERM)
-    print(f'SIGTERM sent to {pid}')
+    log.debug(f'SIGTERM sent to {pid}')
     return
 
 
@@ -60,6 +63,8 @@ class Simulton:
     version = '0.0.1'
 
     def __init__(self, name: str = '') -> None:
+        # reset uvicorn logger
+        setup_logging(__name__)
         self._state = SimultonState.INIT
         self._rate: float = 0
         if not name:
@@ -80,9 +85,9 @@ class Simulton:
         """
         Background async task to receive zmq data
         """
-        print('Simulton.recv_zmq_string..')
+        log.debug('Simulton.recv_zmq_string..')
         res = await self._zsocket.recv_string()
-        print('Simulton.recv_zmq_string() =>', res)
+        log.debug(f'Simulton.recv_zmq_string() => {res}')
         topic, message = res.split()
         assert topic == simulation_ztopic
         # dispatch message
@@ -91,14 +96,13 @@ class Simulton:
                 parse_obj_as(SimulationResponse, json.loads(message))
             )
         except json.JSONDecodeError as err:
-            print('recv_zmq_string caught JSONDecodeError', err)
+            log.info(f'recv_zmq_string caught JSONDecodeError: {err}')
         except Exception as err:
-            print('recv_zmq_string caught Exception', err)
-
+            log.info(f'recv_zmq_string caught Exception: {err}')
         return message
 
     async def on_simulation_state_update(self, resp: SimulationResponse) -> None:
-        print('on_simulation_state_update', resp)
+        log.debug(f'on_simulation_state_update {resp}')
         if resp.state == SimulationState.PAUSED:
             self.state = SimultonState.PAUSED
         elif resp.state == SimulationState.RUNNING:
@@ -120,7 +124,7 @@ class Simulton:
         """Simulton state setter"""
         if state == self._state:
             return state
-        print(f'Simulton {self.title} {self._state} -> {state}')
+        log.debug(f'Simulton {self.title} {self._state} -> {state}')
         # old_state = self._state
         self._state = state
         if state == SimultonState.RUNNING:
@@ -158,7 +162,7 @@ class Simulton:
         """Simulton rate setter"""
         if rate == self._rate:
             return rate
-        print(f'Simulton rate {self._rate} -> {rate}')
+        log.debug(f'Simulton rate {self._rate} -> {rate}')
         self._rate = rate
         return rate
 
@@ -170,21 +174,21 @@ class Simulton:
         """
         State just transitioned to RUNNING
         """
-        print('Simulton.on_running')
+        log.debug('Simulton.on_running')
         return
 
     def on_paused(self) -> None:
         """
         State just transitioned to PAUSED
         """
-        print('Simulton.on_paused')
+        log.debug('Simulton.on_paused')
         return
 
     def on_shutting(self) -> None:
         """
         State just transitioned to SHUTTING
         """
-        print('Simulton.on_shutting', self)
+        log.debug(f'Simulton.on_shutting {self}')
         return
 
     def on_startup(self) -> None:
@@ -205,7 +209,7 @@ class Simulton:
         """
         Simulton FastAPI app shutdown event handler
         """
-        print('Simulton.on_shutdown', self)
+        log.debug(f'Simulton.on_shutdown {self}')
         # close the zmq subscriber
         # https://zguide.zeromq.org/docs/chapter1/#Making-a-Clean-Exit
         # to avoid hanging infinitely
@@ -214,7 +218,7 @@ class Simulton:
             self._zsocket.close()
             self._zcontext.term()
         except Exception as e:
-            print('Caught:', type(e), e)
+            log.info(f'Caught {type(e)}: {e}')
         return
 
     def get_new_instance_id(self) -> str:
@@ -236,7 +240,7 @@ class Simulton:
 
     @classmethod
     def create_app(cls) -> FastAPI:
-        print('Creating a FastAPI app', cls.description)
+        log.debug(f'Creating a FastAPI app {cls.description}')
         return FastAPI(
             title=cls.title, description=cls.description, version=cls.version
         )
@@ -280,7 +284,7 @@ class Simulton:
 # @app.on_event('startup')
 # async def startup_event():
 #     global theDerivedSimulton
-#     print('simulton startup_event', theDerivedSimulton)
+#     log.debug(f'simulton startup_event {theDerivedSimulton}')
 #     theDerivedSimulton = DerivedSimulton()
 #     theDerivedSimulton.on_startup()
 #     return
@@ -288,7 +292,7 @@ class Simulton:
 # @app.on_event('shutdown')
 # async def shutdown_event():
 #     global theDerivedSimulton
-#     print('simulton shutdown_event', theDerivedSimulton)
+#     log.debug(f'simulton shutdown_event {theDerivedSimulton}')
 #     assert theDerivedSimulton is not None
 #     theDerivedSimulton.on_shutdown()
 #     theDerivedSimulton = None

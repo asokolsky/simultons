@@ -4,10 +4,12 @@ Test launching/shutting FastAPI server programmatically
 
 import unittest
 
-from simultons import NewElevatorParams, SimultonProxy, rest_client
+from simultons import NewElevatorParams, SimultonProxy, rest_client, setup_logging
 
 simulton_uri = '/api/v1/simulton'
 elevators_uri = '/api/v1/elevators/'
+
+log = setup_logging(__name__)
 
 
 class TestSimulton(unittest.TestCase):
@@ -23,7 +25,7 @@ class TestSimulton(unittest.TestCase):
         """
         For all the tests
         """
-        print('TestSimulton.setUpClass')
+        log.info('TestSimulton.setUpClass')
         cls._service = SimultonProxy('simultons/elevator.py', 9100)
         #
         # start the simulton process
@@ -39,7 +41,7 @@ class TestSimulton(unittest.TestCase):
         """
         Shut FastAPI process
         """
-        print('TestSimulton.tearDownClass')
+        log.info('TestSimulton.tearDownClass')
         #
         # shut the simulton process
         #
@@ -48,7 +50,7 @@ class TestSimulton(unittest.TestCase):
         return
 
     def setUp(self) -> None:
-        # print('setUp', 'fastapi pid:', self.popen.pid)
+        # log.info('setUp', 'fastapi pid:', self.popen.pid)
         #
         # verify the FastAPI server is running
         #
@@ -58,7 +60,7 @@ class TestSimulton(unittest.TestCase):
         return
 
     def tearDown(self) -> None:
-        # print('tearDown')
+        # log.info('tearDown')
         return
 
     def test_all(self) -> None:
@@ -66,7 +68,7 @@ class TestSimulton(unittest.TestCase):
         Repeat elevator_simulton_test except a real HTTP
         communication is used, not test client.
         """
-        # print('test_all', 'fastapi pid:', self.popen.pid)
+        # log.info('test_all', 'fastapi pid:', self.popen.pid)
 
         assert self.restc is not None
         (status_code, rdata) = self.restc.get(simulton_uri)

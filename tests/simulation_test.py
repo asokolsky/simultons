@@ -9,8 +9,11 @@ from simultons import (
     NewSimultonParams,
     SimulationClient,
     SimultonResponse,
+    setup_logging,
     wait_until_reachable,
 )
+
+log = setup_logging(__name__)
 
 
 class TestSimulation(unittest.TestCase):
@@ -25,7 +28,7 @@ class TestSimulation(unittest.TestCase):
         """
         For all the test...
         """
-        # print('TestSimulation.setUpClass')
+        log.info('TestSimulation.setUpClass')
         return
 
     @classmethod
@@ -33,7 +36,7 @@ class TestSimulation(unittest.TestCase):
         """
         After all the tests...
         """
-        # print('TestSimulation.tearDownClass')
+        log.info('TestSimulation.tearDownClass')
         return
 
     def setUp(self) -> None:
@@ -43,14 +46,14 @@ class TestSimulation(unittest.TestCase):
         #
         # start the simulation process
         #
-        print('TestSimulation.setUp')
+        log.info('TestSimulation.setUp')
         self._client = SimulationClient()
-        self._client.setUp()
+        self._client.set_up()
         return
 
     def tearDown(self) -> None:
-        print('TestSimulation.tearDown')
-        self._client.tearDown()
+        log.info('TestSimulation.tearDown')
+        self._client.tear_down()
         return
 
     def test_minimal(self) -> None:
@@ -65,7 +68,7 @@ class TestSimulation(unittest.TestCase):
         #
         # let's run simulation with no simultons now
         #
-
+        log.info('test_minimal running')
         #
         # lets stop simulation
         #
@@ -87,6 +90,7 @@ class TestSimulation(unittest.TestCase):
             #     'title': '',
             #     'version': ''
             # }
+            assert isinstance(rdata, dict)
             port = rdata['port']
             state = rdata['state']
             self.assertEqual(state, 'INIT')
@@ -108,13 +112,13 @@ class TestSimulation(unittest.TestCase):
         self.assertEqual(rdata, expected)
 
         sims = self.create_clock_simultons(1)
-        print(sims)
+        log.debug(sims)
         self.assertEqual(len(sims), 1)
         for port in sims:
             # reach out to the sim!
             url = f'http://127.0.0.1:{port}/api/v1/clocks/'
             res = wait_until_reachable(url)
-            print('Clocks:', res)
+            log.debug(f'Clocks: {res}')
             self.assertIsNotNone(res)
         return
 
@@ -145,19 +149,30 @@ class TestSimulation(unittest.TestCase):
         start = time.time()
         sims = self.create_clock_simultons(N)
         now = time.time()
-        print(f'Created {N} simultons in {now - start} secs')
-
+        log.info(f'Created {N} simultons in {now - start} secs')
+        #
+        # basic simulton verification
+        #
         rdata = self._client.get_simultons()
+        assert isinstance(rdata, dict)
         self.assertEqual(len(rdata), len(sims))
         self.assertIsInstance(rdata, dict)
-
         self.assertEqual(len(rdata), len(sims))
         for id, sim in rdata.items():
             sim0 = sims[id]
             self.assertEqual(sim, sim0)
-
+        #
+        # do something, e.g.:
+        #   start running simulation
+        #   pause simulation
+        #   start simulation at x2 rate
+        #   pause simulation
+        #
         duration = 5
         time.sleep(duration)
-        print(f'Enjoying {N} simultons for {duration} secs')
+        log.info(f'Enjoying {N} simultons for {duration} secs')
+        #
+        #  verify that the clock time did not change
+        #
 
         return
