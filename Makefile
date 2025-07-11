@@ -8,7 +8,7 @@ VENV:=.venv
 # targets which are NOT files
 .PHONY: help run tests clean lint format clean build
 
-help:										## Shows the help
+help:									## Shows the help
 	@echo 'Usage: make <TARGETS>'
 	@echo ''
 	@echo 'Available targets are:'
@@ -38,7 +38,7 @@ format:									## Format python sources
 mypy:									## Check typing
 	uv run mypy simultons tests
 
-clean:										## Cleanup the artifacts
+clean:									## Cleanup the artifacts
 	rm -rf $(VENV) .mypy_cache .ruff_cache
 	find . -name __pycache__ | xargs rm -rf
 

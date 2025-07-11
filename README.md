@@ -8,8 +8,7 @@ I wanted to play with:
 * [FastAPI](https://fastapi.tiangolo.com/) for microservices;
 * [uv](https://github.com/astral-sh/uv)-based toolchain which seems to offer such performance advantages.
 
-It also appeared that [ZeroMQ](https://zeromq.org/) is a perfect fit to make
-things work together.
+It also appeared that [ZeroMQ](https://zeromq.org/) is a perfect fit to make things work together.
 
 Simulton is:
 
@@ -21,8 +20,7 @@ More [docs](./docs/).
 
 ## Unrelated
 
-* [simpy](https://simpy.readthedocs.io/en/latest/) is awesome and is highly
-recommended and is NOT used in this project.
+* [simpy](https://simpy.readthedocs.io/en/latest/) is awesome and is highly recommended and is NOT used in this project.
 * our use of term `simulton` is NOT related to https://ogden.eu/simultons/
 
 ## Docs Roadmap
