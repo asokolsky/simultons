@@ -2,71 +2,150 @@
 Test launching/shutting uvicorn/FastAPI server process
 """
 
-import os
-import signal
+import sys
 import unittest
-from multiprocessing import Process
+from dataclasses import dataclass
+from multiprocessing import Pipe, Process
+from multiprocessing.connection import Connection
+from pathlib import Path
+from typing import Any
 
-import fastapi
+try:
+    from fastapi import FastAPI
+except ImportError:  # pragma: no cover
+    FastAPI = None  # type: ignore[misc, assignment]
+
 import uvicorn
 
-from simultons import rest_client, setup_logging, wait_until_reachable
-
-host = '127.0.0.1'
-port = 8000
+from simultons import (
+    SimultonRequest,
+    SimultonState,
+    rest_client,
+    setup_logging,
+    wait_until_reachable,
+)
 
 log = setup_logging(__name__)
 
-app = fastapi.FastAPI()
+logging_config = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'standard': {
+            'format': '%(asctime)s <%(process)d:%(processName)s> %(levelname)s %(name)s %(message)s'
+        },
+        'error': {
+            'format': '%(levelname)s <PID %(process)d:%(processName)s> %(name)s.%(funcName)s(): %(message)s'
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'standard',
+            'stream': 'ext://sys.stdout',
+        },
+        'error_console': {
+            'class': 'logging.StreamHandler',
+            'level': 'ERROR',
+            'formatter': 'error',
+            'stream': 'ext://sys.stderr',
+        },
+    },
+    'root': {'level': 'INFO', 'handlers': ['console'], 'propagate': 'yes'},
+    'loggers': {
+        'asyncio': {'level': 'DEBUG'},
+        'fastapi': {'level': 'DEBUG'},
+        'fastapi_cli': {'level': 'DEBUG'},
+        'httpcore': {'level': 'INFO'},
+        'httpx': {'level': 'WARNING'},
+        'simultons': {'level': 'DEBUG'},
+        'simultons.wait': {'level': 'INFO'},
+        'tests': {'level': 'DEBUG', 'handlers': ['console'], 'propagate': 'no'},
+        'uvicorn': {'level': 'DEBUG', 'handlers': ['console'], 'propagate': 'no'},
+        'werkzeug': {'level': 'DEBUG'},
+    },
+}
 
 
-@app.on_event('startup')
-async def startup_event() -> None:
-    log = setup_logging(__name__)
-    log.debug('Server starting up...')
-    return
-
-
-@app.on_event('shutdown')
-async def on_shutdown() -> None:
-    log.debug('Server shutting down...')
-    return
-
-
-@app.get('/hello')
-async def hello() -> dict:
-    log.debug('hello')
-    return {'message': 'hello world'}
-
-
-def shut_the_process() -> None:
-    os.kill(os.getpid(), signal.SIGTERM)
-    # raise KeyboardInterrupt
-    return
-
-
-@app.get('/shutdown')
-async def shutdown(background_tasks: fastapi.BackgroundTasks) -> dict:
+class PipeWriter:
     """
-    An endpoint to shut a FastAPI server
+    Facilitates use of Pipe as a stdout/stderr.
     """
-    log.debug('shutdown')
-    # os.kill(os.getpid(), signal.SIGTERM)
-    background_tasks.add_task(shut_the_process)
-    return {'message': 'Server shutting down...'}
+
+    def __init__(self, conn: Connection) -> None:
+        self.conn = conn
+
+    def write(self, text: Any) -> None:
+        self.conn.send(text)
+
+    def flush(self) -> None:
+        # Pipes are generally unbuffered,
+        # but implementing flush is good practice.
+        pass
 
 
-def launch_uvicorn() -> None:
+@dataclass
+class ModuleData:
+    module_import_str: str
+    extra_sys_path: Path
+    module_paths: list[Path]
+
+
+def get_module_data_from_path(path: Path) -> ModuleData:
+    use_path = path.resolve()
+    module_path = use_path
+    if use_path.is_file() and use_path.stem == '__init__':
+        module_path = use_path.parent
+    module_paths = [module_path]
+    extra_sys_path = module_path.parent
+    for parent in module_path.parents:
+        init_path = parent / '__init__.py'
+        if init_path.is_file():
+            module_paths.insert(0, parent)
+            extra_sys_path = parent.parent
+        else:
+            break
+
+    module_str = '.'.join(p.stem for p in module_paths)
+    return ModuleData(
+        module_import_str=module_str,
+        extra_sys_path=extra_sys_path.resolve(),
+        module_paths=module_paths,
+    )
+
+
+def launch_uvicorn(conn: Connection, host: str, port: int, path: Path) -> None:
     """
-    Start FastAPI uvicorn app
-    see also:
+    Start FastAPI uvicorn app.
+
     https://bugfactory.io/articles/starting-and-stopping-uvicorn-in-the-background/
+    https://github.com/fastapi/fastapi-cli/blob/main/src/fastapi_cli/cli.py#L172
     """
+    sys.stdout = PipeWriter(conn)
+    sys.stderr = PipeWriter(conn)
+
     log = setup_logging(__name__)
-    log.info('launch_uvicorn1')
-    uvicorn.run(app, host=host, port=port, workers=1, log_level='debug')
-    log.info('launch_uvicorn2')
+    log.info(f'launch_uvicorn({host}, {port}, {path})')
+
+    assert path.exists()
+    mod_data = get_module_data_from_path(path)
+    log.debug(f'get_module_data_from_path({path}) => {mod_data}')
+    sys.path.insert(0, str(mod_data.extra_sys_path))
+    # launch uvicorn app
+    uvicorn.run(
+        app=f'{mod_data.module_import_str}:app',
+        host=host,
+        port=port,
+        workers=1,
+        log_config=logging_config,
+    )
+    log.info(f'launch_uvicorn({host}, {port}, {path}) => None')
     return
+
+
+host = '127.0.0.1'
+port = 8000
+simulton_uri = '/api/v1/simulton'
 
 
 class TestUvicorn(unittest.TestCase):
@@ -76,6 +155,7 @@ class TestUvicorn(unittest.TestCase):
 
     process: Process | None = None
     restc = None
+    pconn = None
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -83,9 +163,22 @@ class TestUvicorn(unittest.TestCase):
         Launch uvicorn/FastAPI process
         """
         log.info('setUpClass')
-        cls.process = Process(target=launch_uvicorn)
+        parent_conn, child_conn = Pipe()
+        cls.pconn = parent_conn
+        path: Path = Path('simultons/clock.py')
+        assert path.exists()
+        cls.process = Process(
+            name=f'{path.stem}-{port}',
+            target=launch_uvicorn,
+            args=(
+                child_conn,
+                host,
+                port,
+                path,
+            ),
+        )
         cls.process.start()
-        res = wait_until_reachable(f'http://{host}:{port}/hello')
+        res = wait_until_reachable(f'http://{host}:{port}{simulton_uri}')
         assert res is not None
 
         cls.restc = rest_client(host, port, True, True)  # noqa: FBT003
@@ -98,8 +191,27 @@ class TestUvicorn(unittest.TestCase):
         """
         log.info('tearDownClass')
         assert cls.restc is not None
-        (status_code, rdata) = cls.restc.get(f'http://{host}:{port}/shutdown')
+        params = SimultonRequest(state=SimultonState.SHUTTING)
+        (status_code, rdata) = cls.restc.put(simulton_uri, params.model_dump())
+        assert status_code == 202
+
+        assert cls.pconn is not None
+        while cls.pconn.poll():
+            line = cls.pconn.recv()
+            if line == '\n':
+                continue
+            print(f'parent got: {line.strip()}')
+
         assert cls.process is not None
+        cls.process.terminate()
+
+        assert cls.pconn is not None
+        while cls.pconn.poll():
+            line = cls.pconn.recv()
+            if line == '\n':
+                continue
+            print(f'parent got: {line.strip()}')
+
         cls.process.join()
         return
 
@@ -117,6 +229,6 @@ class TestUvicorn(unittest.TestCase):
         """
         log.info('test_all')
         assert self.restc is not None
-        (status_code, rdata) = self.restc.get(f'http://{host}:{port}/hello')
+        (status_code, rdata) = self.restc.get(simulton_uri)
         self.assertEqual(status_code, 200)
         return

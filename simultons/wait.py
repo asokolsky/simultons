@@ -48,7 +48,10 @@ def wait_until_reachable(
                 assert isinstance(res, dict)
                 return res
 
-            assert False, 'What do we do now?'
+            log.warning(
+                f'wait_until_reachable({url}, {timeout}) => {x} after {time.time() - start:.2f} secs'
+            )
+            return {'resp': x}
 
         except ValueError as err:  # includes simplejson.decoder.JSONDecodeError
             log.info(f'Caught: {err}')

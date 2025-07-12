@@ -2,9 +2,14 @@
 
 ## TODO
 
-* consider using https://github.com/dvarrazzo/py-setproctitle
+* replace fastapi-cli with a direct call to uvicorn.run. Benefits:
+- get rid of fastapi-cli rich logging and gain control over uvicorn logging;
+- speedup? Before : `make tests`: `Ran 19 tests in 51.110s`, produces non-text output.
+
 * use python `with-as` pattern (see [contextlib](https://docs.python.org/3/library/contextlib.html)) to allow for creation of universe filled with simultons;
+
 * full blow simulation of riders/elevators;
+
 * API-based JavaScript GUI for the elevator simulation.
 
 ## DONE
