@@ -40,3 +40,7 @@ async def shut_the_process():
     print(f'{pid} shutting down...')
     return
 ```
+
+## Signals to use
+
+Simultons are terminated using SIGTERM, as the gentlest.  See [termination signal](https://www.gnu.org/software/libc/manual/html_node/Termination-Signals.html) for context.

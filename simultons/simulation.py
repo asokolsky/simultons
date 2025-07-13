@@ -64,11 +64,13 @@ class SimultonProxy(Simulton):
         """
         Launch the simulton process
         """
+        log.debug(f'SimultonProxy.launch({self})')
         return self._launcher.launch()
 
     def wait_until_reachable(self, timeout: int = 20) -> bool:
+        log.debug(f'SimultonProxy.wait_until_reachable({self.simulton_uri})')
         jresp = self._launcher.wait_until_reachable(self.simulton_uri, timeout)
-        log.debug(f'wait_until_reachable({self.simulton_uri}) => {jresp}')
+        log.debug(f'SimultonProxy.wait_until_reachable({self.simulton_uri}) => {jresp}')
         assert isinstance(jresp, dict)
         self.description = jresp['description']
         self.rate = jresp['rate']
@@ -81,6 +83,7 @@ class SimultonProxy(Simulton):
         """
         Send a request to the simulton to move to the PAUSED state
         """
+        log.debug('SimultonProxy.pause()')
         if self._launcher._restc is None:
             return False
         params = SimultonRequest(state=SimultonState.PAUSED)
@@ -93,6 +96,7 @@ class SimultonProxy(Simulton):
         """
         Send a request to the simulton to move to the RUNNING state
         """
+        log.debug(f'SimultonProxy.run({rate})')
         if self._launcher._restc is None:
             return False
         params = SimultonRequest(state=SimultonState.RUNNING, rate=rate)
@@ -105,6 +109,7 @@ class SimultonProxy(Simulton):
         """
         Send a request to the simulton to move to the SHUTTING state
         """
+        log.debug('SimultonProxy.shutting')
         if self._launcher._restc is None:
             return False
         params = SimultonRequest(state=SimultonState.SHUTTING)
@@ -117,10 +122,12 @@ class SimultonProxy(Simulton):
         """
         Forcefully shut the simulton process
         """
+        log.debug('SimultonProxy.shutdown')
         self._launcher.shutdown(timeout=1)
         return
 
     def wait_to_die(self, timeout: float = 0.5) -> bool:
+        log.debug(f'SimultonProxy.wait_to_die({timeout})')
         return self._launcher.wait_to_die(timeout=timeout)
 
 

@@ -2,6 +2,7 @@
     "cSpell.words": [
         "bgtasks",
         "fastapi",
+        "getpid",
         "jresp",
         "mypy",
         "pydantic",

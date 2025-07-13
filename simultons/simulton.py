@@ -14,6 +14,7 @@ import os
 import random
 import signal
 import string
+import sys
 from typing import Any
 
 import zmq
@@ -43,11 +44,12 @@ def get_random_id() -> str:
 
 async def shut_the_process() -> None:
     """
-    Call this to exit FastAPI app
+    Call this to exit FastAPI app.
+    Sends SIGTERM to the current process
     """
     pid = os.getpid()
     os.kill(pid, signal.SIGTERM)
-    log.debug(f'SIGTERM sent to {pid}')
+    log.debug(f'shut_the_process: SIGTERM sent to {pid}')
     return
 
 
@@ -109,7 +111,10 @@ class Simulton:
             self.state = SimultonState.RUNNING
         elif resp.state == SimulationState.SHUTTING:
             self.state = SimultonState.SHUTTING
-            await shut_the_process()
+            #await shut_the_process()
+            pid = os.getpid()
+            os.kill(pid, signal.SIGTERM)
+            log.debug(f'on_simulation_state_update: SIGTERM sent to {pid}')
         else:
             assert False
         return
@@ -219,6 +224,14 @@ class Simulton:
             self._zcontext.term()
         except Exception as e:
             log.info(f'Caught {type(e)}: {e}')
+        # connection to parent
+        from .fast_launcher import connection_to_parent
+        if connection_to_parent is not None:
+            sys.stdout.flush()
+            sys.stderr.flush()
+            log.debug(f'Simulton.on_shutdown closing {connection_to_parent}')
+            connection_to_parent.close()
+            connection_to_parent = None
         return
 
     def get_new_instance_id(self) -> str:

@@ -1,0 +1,10 @@
+apiVersion: 0.1.0
+kind: Simulton
+metadata:
+  name: elevator
+spec:
+  app_path: simultons/elevator.py
+  # implied
+  #uri: /api/v1/simulton
+  # that in simulation? or in simulton
+  uri: /api/v1/elevators

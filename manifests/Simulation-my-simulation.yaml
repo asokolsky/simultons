@@ -1,0 +1,10 @@
+apiVersion: 0.1.0
+kind: Simulation
+metadata:
+  name: my-simulation
+spec:
+  port: 9100
+  first_simulton_port: 9110
+  app_path: simultons/simulation.py
+  simultons:
+    - clock

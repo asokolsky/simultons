@@ -67,6 +67,13 @@ class PipeWriter:
         # but implementing flush is good practice.
         pass
 
+#
+# Pass the stdout and stderr of this process to the parent who launched us.
+# This may help debugging but slows process shutdown by 10 sec.
+#
+redirect_stdout_stderr = False
+
+connection_to_parent: Connection | None = None
 
 def launch_uvicorn(conn: Connection, host: str, port: int, path: Path) -> None:
     """
@@ -76,8 +83,11 @@ def launch_uvicorn(conn: Connection, host: str, port: int, path: Path) -> None:
     https://bugfactory.io/articles/starting-and-stopping-uvicorn-in-the-background/
     https://github.com/fastapi/fastapi-cli/blob/main/src/fastapi_cli/cli.py#L172
     """
-    sys.stdout = PipeWriter(conn)
-    sys.stderr = PipeWriter(conn)
+    global connection_to_parent
+    connection_to_parent = conn
+    if redirect_stdout_stderr:
+        sys.stdout = PipeWriter(conn)
+        sys.stderr = PipeWriter(conn)
 
     log = setup_logging(__name__)
     log.info(f'launch_uvicorn({host}, {port}, {path})')
@@ -208,7 +218,7 @@ class FastLauncher:
         stdouterr_value = ''
         try:
             assert self._conn is not None
-            while self._conn.poll():
+            while self._conn.poll(0.001):
                 line = self._conn.recv()
                 stdouterr_value += line
         except EOFError:
@@ -219,19 +229,21 @@ class FastLauncher:
         """
         Stop the FastAPI service process
         """
+        log.debug(f'shutdown({timeout})')
         assert self._process is not None
         if self._process.exitcode is None:
             try:
                 assert self._process.pid is not None
+                log.debug(f'Sending SIGINT to {self._process.pid}')
                 os.kill(self._process.pid, signal.SIGINT)
             except ProcessLookupError:
                 log.info(f'Failed to locate pid {self._process.pid}')
         else:
-            log.info(f'FastAPI is already down, ec: {self._process.exitcode}')
+            log.debug(f'FastAPI is already down, ec: {self._process.exitcode}')
         #
         # wait for the process to actually terminate
         #
-        res = self.wait_to_die(timeout)
+        res = self.wait_to_die(timeout) if self._process.exitcode is None else True
         #
         # get the child's stdout and stderr
         #
@@ -252,6 +264,8 @@ class FastLauncher:
         if self._restc is not None:
             self._restc.close()
             self._restc = None
+        assert self._conn is not None
+        self._conn.close()
         return res
 
     def get_rest_client(self, verbose: bool, dumpHeaders: bool) -> rest_client:

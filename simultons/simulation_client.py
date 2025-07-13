@@ -37,7 +37,7 @@ class SimulationClient:
         Launch simulation process.
         """
         self._settings = load_settings()
-        log.debug(f'settings: {self._settings}')
+        log.debug(f'set_up settings: {self._settings}')
         assert isinstance(self._settings, dict)
         sim_settings = self._settings['simulation']
         assert isinstance(sim_settings, dict)
@@ -62,11 +62,12 @@ class SimulationClient:
         """
         Request simulation process shutdown.
         """
+        log.debug('tear_down')
         assert self._service is not None
         req = SimulationRequest(state=SimulationState.SHUTTING)
         if self.put_simulation(req) is not None:
+            time.sleep(0.01)
             self._service.wait_to_die(5)
-        time.sleep(0.1)
         self._service.shutdown(timeout=3)
         self._service = None
         # self.restc.close()
