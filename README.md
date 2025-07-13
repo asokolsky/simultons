@@ -145,7 +145,8 @@ fastapi run simultons/simulation.py
 To watch the simulton processes:
 
 1. use `ps` or better yet `echo $$` to identify the pid of the shell;
-2. then
+2. e.g. run `make tests`
+2. in another shell
 
 ```sh
 watch -c -n 0.1 pstree -p <pid> -Ut

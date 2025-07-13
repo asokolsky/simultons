@@ -4,15 +4,101 @@ FastAPI process launcher
 
 import os
 import signal
-import subprocess
+import sys
 import time
+from dataclasses import dataclass
+from multiprocessing import get_context
+from multiprocessing.connection import Connection
 from pathlib import Path
+from typing import Any
 
+import uvicorn
 from strip_ansi import strip_ansi
 
-from . import rest_client, setup_logging, wait_until_reachable
+from . import rest_client, wait_until_reachable
+from .logging import logging_config, setup_logging
 
 log = setup_logging(__name__)
+
+
+@dataclass
+class ModuleData:
+    module_import_str: str
+    extra_sys_path: Path
+    module_paths: list[Path]
+
+
+def get_module_data_from_path(path: Path) -> ModuleData:
+    use_path = path.resolve()
+    module_path = use_path
+    if use_path.is_file() and use_path.stem == '__init__':
+        module_path = use_path.parent
+    module_paths = [module_path]
+    extra_sys_path = module_path.parent
+    for parent in module_path.parents:
+        init_path = parent / '__init__.py'
+        if init_path.is_file():
+            module_paths.insert(0, parent)
+            extra_sys_path = parent.parent
+        else:
+            break
+
+    module_str = '.'.join(p.stem for p in module_paths)
+    return ModuleData(
+        module_import_str=module_str,
+        extra_sys_path=extra_sys_path.resolve(),
+        module_paths=module_paths,
+    )
+
+
+class PipeWriter:
+    """
+    Facilitates use of Pipe as a stdout/stderr.
+    """
+
+    def __init__(self, conn: Connection) -> None:
+        self.conn = conn
+
+    def write(self, text: Any) -> None:
+        self.conn.send(text)
+
+    def flush(self) -> None:
+        # Pipes are generally unbuffered,
+        # but implementing flush is good practice.
+        pass
+
+
+def launch_uvicorn(conn: Connection, host: str, port: int, path: Path) -> None:
+    """
+    Start FastAPI uvicorn app.
+    It is executed in the context of the child process.
+
+    https://bugfactory.io/articles/starting-and-stopping-uvicorn-in-the-background/
+    https://github.com/fastapi/fastapi-cli/blob/main/src/fastapi_cli/cli.py#L172
+    """
+    sys.stdout = PipeWriter(conn)
+    sys.stderr = PipeWriter(conn)
+
+    log = setup_logging(__name__)
+    log.info(f'launch_uvicorn({host}, {port}, {path})')
+
+    assert path.exists()
+    mod_data = get_module_data_from_path(path)
+    log.debug(f'get_module_data_from_path({path}) => {mod_data}')
+    sys.path.insert(0, str(mod_data.extra_sys_path))
+    # launch uvicorn app
+    uvicorn.run(
+        app=f'{mod_data.module_import_str}:app',
+        host=host,
+        port=port,
+        workers=1,
+        log_config=logging_config,
+    )
+    log.info(f'launch_uvicorn({host}, {port}, {path}) => None')
+    return
+
+
+dashes = '==========================='
 
 
 class FastLauncher:
@@ -25,10 +111,22 @@ class FastLauncher:
         Constructor.
         path - to the python file which has FastAPI global app defined
         """
+        ctxt = get_context('spawn')
+
         self._host = '127.0.0.1'
-        self._path = path
+        self._path = Path(path)
         self._port = port
-        self._popen: subprocess.Popen | None = None
+        self._conn, child_conn = ctxt.Pipe()
+        self._process = ctxt.Process(
+            name=f'{self._path.stem}-{port}',
+            target=launch_uvicorn,
+            args=(
+                child_conn,
+                self._host,
+                self._port,
+                self._path,
+            ),
+        )
         #
         # control REST client verbosity
         #
@@ -47,83 +145,89 @@ class FastLauncher:
         """Port accessor."""
         return self._port
 
-    def launch(self, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) -> int:  # noqa: ANN001
+    def launch(self) -> int:
         """
         Start the FastAPI service process.
-        To redirect stderr to stdout: stderr=subprocess.STDOUT
         Returns service process pid
         """
-        # parent_dir = os.path.abspath(
-        #    os.path.dirname(os.path.realpath(__file__)) + '/..')
-        parent_dir = Path(__file__).absolute().parents[1]
-        command_line = [
-            'fastapi',
-            'run',
-            '--host',
-            self._host,
-            '--port',
-            str(self._port),
-            '--workers',
-            str(1),
-            self._path,
-        ]
-        log.debug(f'cwd: {parent_dir} command_line: {command_line}')
-        self._popen = subprocess.Popen(  # noqa: S603
-            command_line,
-            cwd=parent_dir,
-            stdout=stdout,
-            stderr=stderr,  # text=True
-        )
-        return self._popen.pid
+        # parent_dir = Path(__file__).absolute().parents[1]
+        # log.debug(f'cwd: {parent_dir} command_line: {command_line}')
+        if not self._path.exists():
+            log.error(f'File not found: {self._path}')
+            return 0
+
+        self._process.start()
+        assert self._process.pid is not None
+        return self._process.pid
 
     def wait_until_reachable(self, health_uri: str, timeout: int = 20) -> dict | None:
         """
         Give some room for the process to start.
         Returns a JSON produced by health_uri
         """
+        if self._process.pid == 0:
+            log.error('Call launch() before calling wait_until_reachable')
+            return None
+        if not self._process.is_alive():
+            log.error('Process is dead, cant wait')
+
         return wait_until_reachable(
-            f'http://{self._host}:{self._port}{health_uri}', self._popen, timeout
+            f'http://{self._host}:{self._port}{health_uri}', self._process, timeout
         )
 
     def wait_to_die(self, timeout: float = 0.5) -> bool:
-        assert self._popen is not None
-        if self._popen.returncode is not None:
+        if not self._process.is_alive():
             log.info(
-                f'Pid {self._popen.pid} already terminated with ec: {self._popen.returncode}'
+                f'Pid {self._process.pid} already terminated with ec: {self._process.exitcode}'
             )
             return True
         #
         # wait for the process to actually terminate
         #
-        log.info(f'Waiting for upto {timeout} secs for {self._popen.pid} to die...')
+        log.info(f'Waiting for upto {timeout} secs for {self._process.pid} to die...')
         start = time.time()
-        try:
-            self._popen.wait(timeout)
+
+        self._process.join(timeout)
+        if self._process.exitcode is not None:
             # the process has terminated
             elapsed = time.time() - start
             log.info(
-                f'{self._popen.pid} died after {elapsed:.3f} secs, ec: {self._popen.returncode}'
+                f'{self._process.pid} died after {elapsed:.3f} secs, ec: {self._process.exitcode}'
             )
             return True
 
-        except subprocess.TimeoutExpired:
-            log.info(
-                f'Waiting for {self._popen.pid} to die timed out after {timeout} secs'
-            )
+        log.info(
+            f'Waiting for {self._process.pid} to die timed out after {timeout} secs'
+        )
         return False
+
+    def get_child_output(self) -> str:
+        """
+        Get the child's stdout and stderr without blocking
+        """
+        stdouterr_value = ''
+        try:
+            assert self._conn is not None
+            while self._conn.poll():
+                line = self._conn.recv()
+                stdouterr_value += line
+        except EOFError:
+            pass
+        return stdouterr_value
 
     def shutdown(self, timeout: float = 0.5) -> bool:
         """
         Stop the FastAPI service process
         """
-        assert self._popen is not None
-        if self._popen.returncode is None:
+        assert self._process is not None
+        if self._process.exitcode is None:
             try:
-                os.kill(self._popen.pid, signal.SIGINT)
+                assert self._process.pid is not None
+                os.kill(self._process.pid, signal.SIGINT)
             except ProcessLookupError:
-                log.info(f'Failed to locate pid {self._popen.pid}')
+                log.info(f'Failed to locate pid {self._process.pid}')
         else:
-            log.info(f'FastAPI is already down, ec: {self._popen.returncode}')
+            log.info(f'FastAPI is already down, ec: {self._process.exitcode}')
         #
         # wait for the process to actually terminate
         #
@@ -131,33 +235,18 @@ class FastLauncher:
         #
         # get the child's stdout and stderr
         #
-        stdout_value = ''
-        stderr_value = ''
-        try:
-            stdout_value, stderr_value = self._popen.communicate()
-        except Exception as err:
-            log.info(f'Caught while tying to communicate with {self._popen.pid}: {err}')
-
-        dashes = '==========================='
-        output_produced = False
-        if stdout_value:
-            if isinstance(stdout_value, (bytes, bytearray)):
-                stdout_value = stdout_value.decode()
-            log.info(f'{dashes} {self._path} {self._popen.pid} stdout {dashes}')
-            for line in strip_ansi(stdout_value).splitlines():
+        stdouterr_value = self.get_child_output()
+        #
+        # print it to the log
+        #
+        if stdouterr_value:
+            log.info(
+                f'{dashes} {self._path} {self._process.pid} stdout/stderr {dashes}'
+            )
+            for line in strip_ansi(stdouterr_value).splitlines():
                 if line:
                     log.info(f'{line}')
-            output_produced = True
-        if stderr_value:
-            if isinstance(stderr_value, (bytes, bytearray)):
-                stderr_value = stderr_value.decode()
-            log.info(f'{dashes} {self._path} {self._popen.pid} stderr {dashes}')
-            for line in strip_ansi(stderr_value).splitlines():
-                if line:
-                    log.info(f'{line}')
-            output_produced = True
-        if output_produced:
-            log.info(f'{dashes} {self._path} {self._popen.pid} end {dashes}')
+            log.info(f'{dashes} {self._path} {self._process.pid} end {dashes}')
 
         # close the socket
         if self._restc is not None:
@@ -167,28 +256,3 @@ class FastLauncher:
 
     def get_rest_client(self, verbose: bool, dumpHeaders: bool) -> rest_client:
         return rest_client(self._host, self._port, verbose, dumpHeaders)
-
-    def read_stdout(self) -> int | None:
-        """
-        Capture Python subprocess output in real-time.
-        https://lucadrf.dev/blog/python-subprocess-buffers/
-
-        Returns:
-         - None if interrupted by KeyboardInterrupt
-         - process exit code otherwise
-
-        """
-        dashes = '==========================='
-        assert self._popen is not None
-        print(dashes, self._path, self._popen.pid, 'stdout', dashes)
-        ec = self._popen.poll()
-        while ec is None:
-            try:
-                assert self._popen.stdout is not None
-                line = self._popen.stdout.readline()
-                print(line.rstrip('\r\n '))
-            except KeyboardInterrupt:
-                break
-            ec = self._popen.poll()
-        print(dashes, self._path, self._popen.pid, 'end', dashes)
-        return ec

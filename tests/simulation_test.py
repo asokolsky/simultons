@@ -129,9 +129,8 @@ class TestSimulation(unittest.TestCase):
         To run this test alone:
         python3 -m unittest -k test_many_simultons tests/simulation_test.py
         To watch the simulton processes:
-            1. use `ps` to identify the pid of the shell;
-            2. then
-            watch -c -n 0.1  pstree -p <shell-pid> -Ut
+            1. use `ps` or `echo $$` to identify the pid of the shell;
+            2. then `watch -c -n 0.1 pstree -p <shell-pid> -Ut`
         """
         N = 15
 

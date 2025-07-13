@@ -5,7 +5,7 @@ Test launching/shutting uvicorn/FastAPI server process
 import sys
 import unittest
 from dataclasses import dataclass
-from multiprocessing import Pipe, Process
+from multiprocessing import Process, get_context
 from multiprocessing.connection import Connection
 from pathlib import Path
 from typing import Any
@@ -163,11 +163,13 @@ class TestUvicorn(unittest.TestCase):
         Launch uvicorn/FastAPI process
         """
         log.info('setUpClass')
-        parent_conn, child_conn = Pipe()
+        ctxt = get_context('spawn')
+
+        parent_conn, child_conn = ctxt.Pipe()
         cls.pconn = parent_conn
         path: Path = Path('simultons/clock.py')
         assert path.exists()
-        cls.process = Process(
+        cls.process = ctxt.Process(
             name=f'{path.stem}-{port}',
             target=launch_uvicorn,
             args=(

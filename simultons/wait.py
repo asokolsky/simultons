@@ -1,5 +1,5 @@
 import time
-from subprocess import Popen, TimeoutExpired
+from multiprocessing import Process
 
 import httpx
 
@@ -9,33 +9,17 @@ log = setup_logging(__name__)
 
 
 def wait_until_reachable(
-    url: str, popen: Popen | None = None, timeout: int = 20
+    url: str, proc: Process | None = None, timeout: int = 20
 ) -> dict | None:
     """
     Wait upto timeout secs until the url is reachable
     """
 
-    def wait(secs: int) -> bool:
-        if popen is None:
-            time.sleep(secs)
-        else:
-            try:
-                popen.wait(secs)
-                return False
-            except TimeoutExpired:
-                pass
-        return True
-
     start = time.time()
     time_to_timeout = start + timeout
     log.info(f'wait_until_reachable({url}, {timeout})...')
     while time.time() < time_to_timeout:
-        if not wait(1):
-            # if we are here, this means the process has terminated
-            log.info(
-                f'wait_until_reachable({url}, {timeout} => None after {time.time() - start:.2f} secs'
-            )
-            return None
+        time.sleep(0.5)
         try:
             # are we there yet?
             x = httpx.get(url)
@@ -59,7 +43,12 @@ def wait_until_reachable(
         except httpx.ConnectError as err:
             log.debug(f'Caught: {err}')
 
-    log.debug(f'wait_until_reachable({url}, {timeout}) => None')
+        if proc is not None and not proc.is_alive():
+            break
+
+    log.debug(
+        f'wait_until_reachable({url}, {timeout}) => None, after {time.time() - start:.2f} secs'
+    )
     return None
 
     # wait until process pid has children
