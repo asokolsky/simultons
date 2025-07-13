@@ -67,6 +67,9 @@ class Simulton:
     def __init__(self, name: str = '') -> None:
         # reset uvicorn logger
         setup_logging(__name__)
+        # from .logging import print_logging_tree
+        # print_logging_tree()
+
         self._state = SimultonState.INIT
         self._rate: float = 0
         if not name:
@@ -94,7 +97,7 @@ class Simulton:
         assert topic == simulation_ztopic
         # dispatch message
         try:
-            await self.on_simulation_state_update(
+            self.on_simulation_state_update(
                 parse_obj_as(SimulationResponse, json.loads(message))
             )
         except json.JSONDecodeError as err:
@@ -103,7 +106,7 @@ class Simulton:
             log.info(f'recv_zmq_string caught Exception: {err}')
         return message
 
-    async def on_simulation_state_update(self, resp: SimulationResponse) -> None:
+    def on_simulation_state_update(self, resp: SimulationResponse) -> None:
         log.debug(f'on_simulation_state_update {resp}')
         if resp.state == SimulationState.PAUSED:
             self.state = SimultonState.PAUSED
@@ -111,7 +114,7 @@ class Simulton:
             self.state = SimultonState.RUNNING
         elif resp.state == SimulationState.SHUTTING:
             self.state = SimultonState.SHUTTING
-            #await shut_the_process()
+            # await shut_the_process()
             pid = os.getpid()
             os.kill(pid, signal.SIGTERM)
             log.debug(f'on_simulation_state_update: SIGTERM sent to {pid}')
@@ -226,9 +229,12 @@ class Simulton:
             log.info(f'Caught {type(e)}: {e}')
         # connection to parent
         from .fast_launcher import connection_to_parent
+
         if connection_to_parent is not None:
             sys.stdout.flush()
             sys.stderr.flush()
+            sys.stdout = sys.__stdout__
+            sys.stderr = sys.__stderr__
             log.debug(f'Simulton.on_shutdown closing {connection_to_parent}')
             connection_to_parent.close()
             connection_to_parent = None

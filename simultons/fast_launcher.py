@@ -2,10 +2,12 @@
 FastAPI process launcher
 """
 
+import contextlib
 import os
 import signal
 import sys
 import time
+from collections import deque
 from dataclasses import dataclass
 from multiprocessing import get_context
 from multiprocessing.connection import Connection
@@ -13,7 +15,6 @@ from pathlib import Path
 from typing import Any
 
 import uvicorn
-from strip_ansi import strip_ansi
 
 from . import rest_client, wait_until_reachable
 from .logging import logging_config, setup_logging
@@ -60,20 +61,24 @@ class PipeWriter:
         self.conn = conn
 
     def write(self, text: Any) -> None:
-        self.conn.send(text)
+        with contextlib.suppress(OSError):
+            self.conn.send(text)
 
     def flush(self) -> None:
         # Pipes are generally unbuffered,
         # but implementing flush is good practice.
         pass
 
+
 #
 # Pass the stdout and stderr of this process to the parent who launched us.
-# This may help debugging but slows process shutdown by 10 sec.
+# This may help debugging but slows process shutdown by 10 sec on:
+# .venv/bin/python3 -m unittest -k many tests/simulation_test.py
 #
 redirect_stdout_stderr = False
 
 connection_to_parent: Connection | None = None
+
 
 def launch_uvicorn(conn: Connection, host: str, port: int, path: Path) -> None:
     """
@@ -215,21 +220,24 @@ class FastLauncher:
         """
         Get the child's stdout and stderr without blocking
         """
-        stdouterr_value = ''
+        d: deque = deque()
         try:
             assert self._conn is not None
-            while self._conn.poll(0.001):
-                line = self._conn.recv()
-                stdouterr_value += line
+            while self._conn.poll(0.1):
+                d.append(self._conn.recv())
         except EOFError:
             pass
-        return stdouterr_value
+        log.debug(f'get_child_output in {len(d)} parts')
+        return ''.join(d)
 
     def shutdown(self, timeout: float = 0.5) -> bool:
         """
         Stop the FastAPI service process
         """
         log.debug(f'shutdown({timeout})')
+
+        before = self.get_child_output()
+
         assert self._process is not None
         if self._process.exitcode is None:
             try:
@@ -247,7 +255,7 @@ class FastLauncher:
         #
         # get the child's stdout and stderr
         #
-        stdouterr_value = self.get_child_output()
+        stdouterr_value = before + self.get_child_output()
         #
         # print it to the log
         #
@@ -255,7 +263,7 @@ class FastLauncher:
             log.info(
                 f'{dashes} {self._path} {self._process.pid} stdout/stderr {dashes}'
             )
-            for line in strip_ansi(stdouterr_value).splitlines():
+            for line in stdouterr_value.splitlines():
                 if line:
                     log.info(f'{line}')
             log.info(f'{dashes} {self._path} {self._process.pid} end {dashes}')

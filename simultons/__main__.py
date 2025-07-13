@@ -2,7 +2,8 @@
 Run the simulation and possibly some simultons
 """
 
-from . import SimulationClient, setup_logging
+from .logging import setup_logging
+from .simulation_client import SimulationClient
 
 log = setup_logging(__name__)
 
