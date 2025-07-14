@@ -2,6 +2,10 @@ from pathlib import Path
 
 import yaml
 
+from . import setup_logging
+
+log = setup_logging(__name__)
+
 
 def load_settings(fname: str = 'settings.yaml') -> dict | None:
     """
@@ -16,7 +20,7 @@ def load_settings(fname: str = 'settings.yaml') -> dict | None:
             return settings
 
     except FileNotFoundError:
-        print(f'Error: settings file {fname} not found.')
+        log.error(f'Error: settings file {fname} not found.')
     except yaml.YAMLError as err:
-        print(f'Error parsing settings from {fname}: {err}')
+        log.error(f'Error parsing settings from {fname}: {err}')
     return None

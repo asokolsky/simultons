@@ -7,7 +7,7 @@ from .logging import setup_logging, print_logging_tree
 from .arestc import async_rest_client
 from .button import Button, ButtonWithLed, ButtonWithLedPanel
 from .restc import rest_client
-from .globals import simulation_zspec, simulation_ztopic
+from .globals import simulation_zspec, simulation_ztopic, module_version
 from .schemas import (
     NewClockParams,
     ClockResponse,
@@ -33,7 +33,7 @@ from .clock import Clock
 from .simulation import Simulation, SimultonProxy, theSimulation
 from .simulation_client import SimulationClient
 
-__version__ = '0.1.0'
+__version__ = module_version
 
 __all__ = [
     # globals.py
@@ -85,4 +85,6 @@ __all__ = [
     # logging.py
     'setup_logging',
     'print_logging_tree',
+    # __init__.py
+    #'get_version',
 ]

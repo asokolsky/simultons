@@ -9,7 +9,8 @@ from starlette.background import BackgroundTask
 import zmq
 import zmq.asyncio
 
-from .globals import simulation_zspec, simulation_ztopic
+from .globals import simulation_zspec, simulation_ztopic, module_version
+
 from . import (
     FastLauncher,
     SimulationState,
@@ -144,7 +145,8 @@ class Simulation:
         Initializer
         """
         # reset uvicorn logger
-        setup_logging(__name__)
+        global log
+        log = setup_logging(__name__)
         # init members
         self._state = SimulationState.INIT
         # start in paused
@@ -296,7 +298,22 @@ theSimulation: Simulation | None = None  # Simulation()  # noqa: N816
 """
 Create a REST API service
 """
-app = FastAPI(title='simulation', description='Simulation API', version='0.0.1')
+app = FastAPI(
+    title='Simulation',
+    summary='Simulation with Simultons.',
+    description="""
+Simulation runs multiple Simultons, each of them in their own process and with their own REST API endpoint.
+
+## Simulation Endpoint
+
+Can be used to manipulate the state of the simulation
+
+## Simultons Endpoint
+
+Can be used to create new simultons, destroy them, etc.
+""",
+    version=module_version,
+)
 
 
 @app.on_event('startup')
@@ -318,7 +335,7 @@ async def shutdown_event() -> None:
     return
 
 
-@app.get('/api/v1/simulation', response_model=SimulationResponse)
+@app.get('/api/v1/simulation', response_model=SimulationResponse, tags=['simulation'])
 async def get_simulation() -> dict:
     """
     Get the simulation state
@@ -334,6 +351,7 @@ async def get_simulation() -> dict:
     response_model=SimulationResponse,
     status_code=202,
     responses={400: {'model': Message}},
+    tags=['simulation'],
 )
 async def put_simulation(req: SimulationRequest) -> JSONResponse:
     """
@@ -359,6 +377,7 @@ async def put_simulation(req: SimulationRequest) -> JSONResponse:
     response_model=SimultonResponse,
     status_code=201,
     responses={400: {'model': Message}},
+    tags=['simultons'],
 )
 async def create_simulton(params: NewSimultonParams) -> SimultonResponse | JSONResponse:
     """
@@ -372,7 +391,9 @@ async def create_simulton(params: NewSimultonParams) -> SimultonResponse | JSONR
         return JSONResponse(status_code=400, content=content)
 
 
-@app.get('/api/v1/simultons', response_model=dict[int, SimultonResponse])
+@app.get(
+    '/api/v1/simultons', response_model=dict[int, SimultonResponse], tags=['simultons']
+)
 async def get_simultons() -> dict:
     """
     Get the simulation rate
@@ -385,6 +406,7 @@ async def get_simultons() -> dict:
     '/api/v1/simultons/{id}',
     response_model=SimultonResponse,
     responses={404: {'model': Message}},
+    tags=['simultons'],
 )
 async def get_simulton(id: int) -> SimultonResponse | JSONResponse:
     """

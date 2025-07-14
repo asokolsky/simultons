@@ -18,10 +18,10 @@ help:									## Shows the help
 		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-25s\033[0m %s\n", $$1, $$2}'
 	@echo ''
 
-run:									## Execute python program
-	uv run simultons/__main__.py $(SITE)
+run:									## Run simulation REPL
+	uv run -m simultons
 
-tests:									## Execute python tests
+tests:									## Execute unit tests
 	uv run -m unittest -v tests/*_test.py
 
 lint:									## Lint python sources

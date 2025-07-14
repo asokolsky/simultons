@@ -5,22 +5,11 @@ formatters:
   default:
     format: "%(asctime)s.%(msecs)03d <%(process)d:%(processName)s> %(levelname)s %(name)s %(message)s"
     datefmt: "%H:%M:%S"
-  standard:
-    format: "%(asctime)s <%(process)d:%(processName)s> %(levelname)s %(name)s %(message)s"
-  error:
-    format: "%(levelname)s <PID %(process)d:%(processName)s> %(name)s.%(funcName)s(): %(message)s"
 
 handlers:
   console:
     class: logging.StreamHandler
-    #level: DEBUG
     formatter: default
-    stream: ext://sys.stdout
-
-  error_console:
-    class: logging.StreamHandler
-    level: ERROR
-    formatter: error
     stream: ext://sys.stderr
 
 root:
@@ -30,15 +19,15 @@ root:
 
 loggers:
   asyncio:
-    level: DEBUG
+    level: INFO
     #handlers: [console]
     #propagate: no
   fastapi:
-    level: DEBUG
+    level: INFO
     #handlers: [console]
     #propagate: no
   fastapi_cli:
-    level: DEBUG
+    level: INFO
     #handlers: [console]
     #propagate: no
   httpcore:
@@ -46,20 +35,18 @@ loggers:
   httpx:
     level: WARNING
   simultons:
-    level: DEBUG
-    #handlers: [console]
-    #propagate: no
-  simultons.wait:
+    level: INFO
+  simultons.simulation:
     level: INFO
   tests:
-    level: DEBUG
+    level: INFO
     #handlers: [console]
     #propagate: no
   uvicorn:
-    level: DEBUG
+    level: INFO
     #handlers: [console]
     #propagate: no
   werkzeug:
-    level: DEBUG
+    level: INFO
     #handlers: [console]
     #propagate: no
