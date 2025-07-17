@@ -201,7 +201,6 @@ class FastLauncher:
         #
         log.info(f'Waiting for upto {timeout} secs for {self._process.pid} to die...')
         start = time.time()
-
         self._process.join(timeout)
         if self._process.exitcode is not None:
             # the process has terminated

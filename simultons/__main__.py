@@ -1,17 +1,86 @@
 """
-Run the simulation and possibly some simultons
+Run the simulation and possibly some simultons like this:
+    python -m simultons --version
 """
 
+import json
 import logging
 import sys
 from argparse import ArgumentParser, ArgumentTypeError, RawTextHelpFormatter
 from pathlib import Path
+from typing import Any
 
-from . import SimulationClient, print_logging_tree, setup_logging
+import cmd2
+from pydantic import ValidationError
+
+from . import (
+    NewSimultonParams,
+    SimulationClient,
+    SimulationRequest,
+    module_version,
+    print_logging_tree,
+    setup_logging,
+)
 
 
 def eprint(*args) -> None:
     print(*args, file=sys.stderr)
+
+
+class SimultonsShell(cmd2.Cmd):
+    def __init__(self, client: SimulationClient) -> None:
+        super().__init__(completekey='tab')
+        self._client = client
+        return
+
+    def do_simulation_get(self, args) -> None:
+        """
+        Get the simulation
+        """
+        js = self._client.get_simulation()
+        self.poutput(json.dumps(js, indent=2))
+        return
+
+    def do_simulation_put(self, args: str) -> None:
+        """
+        Modify the simulation using SimulationRequest
+        e.g. {"state": "PAUSED","rate": 1.0}
+        """
+        try:
+            arg = SimulationRequest.model_validate_json(args)
+            # self.poutput(json.dumps(arg.model_dump(), indent=2))
+            js = self._client.put_simulation(arg)
+            self.poutput(json.dumps(js, indent=2))
+
+        except ValidationError:
+            self.perror(f"Error: '{args}' is not a SimulationRequest.")
+        return
+
+    def do_simultons_get(self, args) -> None:
+        """
+        Get all or just one simulton
+        """
+        if not args:
+            js = self._client.get_simultons()
+        else:
+            js = self._client.get_simulton(args)
+        self.poutput(json.dumps(js, indent=2))
+        return
+
+    def do_simultons_post(self, args) -> None:
+        """
+        Create a new simulton
+        e.g. {"src_path":"simultons/clock.py"}
+        """
+        try:
+            arg = NewSimultonParams.model_validate_json(args)
+            # self.poutput(json.dumps(arg.model_dump(), indent=2))
+            js = self._client.post_simulton(arg)
+            self.poutput(json.dumps(js, indent=2))
+
+        except ValidationError:
+            self.perror(f"Error: '{args}' is not a NewSimultonParams.")
+        return
 
 
 def existing_file_path(arg: str) -> str:
@@ -60,37 +129,33 @@ def main() -> int:
         default='logging.yaml',
         help='Logging config file in YAML format, defaults to `logging.yaml`',
     )
+    ap.add_argument(
+        '--version',
+        action='store_true',
+        help='Display module version and exit.',
+    )
     args = ap.parse_args()
+    if args.version:
+        print(module_version)
+        return 0
 
-    log = setup_logging(__name__, logging.NOTSET, args.logging_config)
-    print_logging_tree()
-    log.debug('Welcome to REPL')
+    setup_logging(__name__, logging.NOTSET, args.logging_config)
+    # print_logging_tree()
 
-    client = SimulationClient()
-    if client.set_up(args.settings):
-        #
-        # do something with your life
-        #
-        def get_prompt() -> str:
-            url = f'http://{client._service.host}:{client._service.port}'
-            return f'API Docs: {url}/docs\nSimulation API endpoint: {url}/api/v1/simulation\nSimultons API endpoint: {url}/api/v1/simultons\n> '
+    with SimulationClient(args.settings) as client:
+        assert client._service is not None
+        url = f'http://{client._service.host}:{client._service.port}'
+        intro = f"""
+Simulation API: {url}/api/v1/simulation
+Simultons API: {url}/api/v1/simultons
+Docs: {url}/docs"""
 
-        while True:
-            try:
-                cmd = input(get_prompt())
-                if cmd == '':
-                    continue
-                if cmd == 'exit':
-                    break
-                print('Unknown command:', cmd)
-                print()
-            except EOFError:
-                break
-    else:
-        eprint('Failed to start simulation')
-    client.tear_down()
+        try:
+            SimultonsShell(client).cmdloop(intro=intro)
+        except KeyboardInterrupt:
+            print('exiting')
     return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

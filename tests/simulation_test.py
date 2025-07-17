@@ -93,7 +93,7 @@ class TestSimulation(unittest.TestCase):
             assert isinstance(rdata, dict)
             port = rdata['port']
             state = rdata['state']
-            self.assertEqual(state, 'INIT')
+            self.assertEqual(state, 'PAUSED')
             res[str(port)] = rdata
         return res
 

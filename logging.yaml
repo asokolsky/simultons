@@ -15,7 +15,7 @@ handlers:
     class: logging.StreamHandler
     #level: DEBUG
     formatter: default
-    stream: ext://sys.stdout
+    stream: ext://sys.stderr
 
   error_console:
     class: logging.StreamHandler
@@ -24,7 +24,7 @@ handlers:
     stream: ext://sys.stderr
 
 root:
-  level: INFO
+  level: DEBUG
   handlers: [console]
   propagate: yes
 
@@ -50,7 +50,7 @@ loggers:
     #handlers: [console]
     #propagate: no
   simultons.wait:
-    level: INFO
+    level: DEBUG
   tests:
     level: DEBUG
     #handlers: [console]

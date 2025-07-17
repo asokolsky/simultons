@@ -5,6 +5,8 @@
         "getpid",
         "jresp",
         "mypy",
+        "perror",
+        "poutput",
         "pydantic",
         "rdata",
         "restc",

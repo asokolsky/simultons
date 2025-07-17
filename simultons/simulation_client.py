@@ -3,6 +3,7 @@ Simulation REST client in python
 """
 
 import time
+from typing import Any
 
 import httpx
 
@@ -27,19 +28,22 @@ class SimulationClient:
     api_uri = '/api/v1/simulation'
     simultons_uri = '/api/v1/simultons'
 
-    def __init__(self) -> None:
+    def __init__(self, fname: str = 'settings.yaml') -> None:
+        log.debug(f'SimulationClient: {fname}')
         self._service: FastLauncher | None = None
         self._restc: rest_client | None = None
+        self._settings = load_settings(fname)
+        log.debug(f'SimulationClient: {self._settings}')
         return
 
-    def set_up(self, fname: str = 'settings.yaml') -> bool:
+    def set_up(self) -> bool:
         """
         Launch simulation process.
         """
-        self._settings = load_settings(fname)
-        log.debug(f'set_up settings: {self._settings}')
         if self._settings is None:
+            log.debug('SimulationClient.set_up => False')
             return False
+        log.debug(f'SimulationClient.set_up settings: {self._settings}')
         assert isinstance(self._settings, dict)
         sim_settings = self._settings['simulation']
         assert isinstance(sim_settings, dict)
@@ -76,6 +80,24 @@ class SimulationClient:
         self._restc = None
         return
 
+    def __enter__(self) -> 'SimulationClient':
+        """
+        Enter the with block, start the CLI session
+        """
+        log.info('SimulationClient.__enter__()')
+        self.set_up()
+        return self
+
+    def __exit__(self, exception_type, exception_value, exception_traceback) -> None:
+        """
+        Handle the exception(s)
+        """
+        log.info(
+            f'SimulationClient.__exit__({exception_type}, {exception_value}, {exception_traceback})'
+        )
+        self.tear_down()
+        return
+
     def get_simulation(self) -> dict | None:
         if self._restc is None:
             log.info('get_simulation failed - _restc is None')
@@ -86,9 +108,9 @@ class SimulationClient:
             assert isinstance(rdata, dict)
             return rdata
         except httpx.ConnectError as err:
-            log.info(f'Caught in SimulationClient.get_simulation: {err}')
+            log.warning(f'Caught in SimulationClient.get_simulation: {err}')
         except httpx.ReadTimeout as err:
-            log.info(f'Caught in SimulationClient.get_simulation: {err}')
+            log.warning(f'Caught in SimulationClient.get_simulation: {err}')
         return None
 
     def put_simulation(self, req: SimulationRequest) -> dict | None:
@@ -102,7 +124,6 @@ class SimulationClient:
         try:
             (status_code, rdata) = self._restc.put(self.api_uri, req.model_dump())
             assert isinstance(rdata, dict)
-            self._service.wait_to_die(5)
             return rdata
         except httpx.ConnectError as err:
             log.info(f'Caught in SimulationClient.put_simulation: {err}')
@@ -133,3 +154,17 @@ class SimulationClient:
         assert status_code == 200
         assert isinstance(rdata, dict)
         return rdata
+
+    def get_simulton(self, id: Any) -> dict | None:
+        """
+        Request a list of simultons
+        """
+        if self._restc is None:
+            log.info(f'get_simulton({id}) failed - _restc is None')
+        else:
+            (status_code, rdata) = self._restc.get(f'{self.simultons_uri}/{id}')
+            if status_code == 200:
+                assert isinstance(rdata, dict)
+                return rdata
+            log.info(f'get_simulton({id}) failed - {status_code}')
+        return None
