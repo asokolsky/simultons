@@ -17,6 +17,7 @@ from . import (
     Simulton,
     SimultonRequest,
     SimultonResponse,
+    Tags,
     setup_logging,
 )
 from .simulton import get_random_id
@@ -204,8 +205,8 @@ class ElevatorSimulton(Simulton):
     """
 
     title = 'Elevator'
-    description = 'Elevator API'
-    version = '0.0.1'
+    summary = 'Elevator API'
+    description = 'Elevator simulton can do so many things....'
 
     def __init__(self) -> None:
         """
@@ -238,7 +239,7 @@ async def shutdown_event() -> None:
     return
 
 
-@app.get('/api/v1/simulton', response_model=SimultonResponse)
+@app.get('/api/v1/simulton', response_model=SimultonResponse, tags=[Tags.simulton])
 async def get_simulton() -> SimultonResponse:
     log.debug('get elevator simulton')
     # global theElevatorSimulton
@@ -246,7 +247,7 @@ async def get_simulton() -> SimultonResponse:
     return theElevatorSimulton.to_response()
 
 
-@app.put('/api/v1/simulton')
+@app.put('/api/v1/simulton', tags=[Tags.simulton])
 async def put_simulton(req: SimultonRequest) -> JSONResponse:
     """
     Handle a request to change the simulton state
@@ -256,7 +257,11 @@ async def put_simulton(req: SimultonRequest) -> JSONResponse:
     return theElevatorSimulton.on_put_simulton(req)
 
 
-@app.get('/api/v1/elevators/', response_model=dict[str, ElevatorResponse])
+@app.get(
+    '/api/v1/elevators/',
+    response_model=dict[str, ElevatorResponse],
+    tags=[Tags.elevators],
+)
 async def get_instances() -> dict:
     """
     Get all the elevators
@@ -270,7 +275,12 @@ async def get_instances() -> dict:
     }
 
 
-@app.post('/api/v1/elevators/', response_model=ElevatorResponse, status_code=201)
+@app.post(
+    '/api/v1/elevators/',
+    response_model=ElevatorResponse,
+    status_code=201,
+    tags=[Tags.elevators],
+)
 async def create_instance(params: NewElevatorParams) -> dict:
     """
     Handle new instance creation
@@ -284,6 +294,7 @@ async def create_instance(params: NewElevatorParams) -> dict:
     '/api/v1/elevators/{id}',
     response_model=ElevatorResponse,
     responses={404: {'model': Message}},
+    tags=[Tags.elevators],
 )
 async def get_elevator(id: str) -> JSONResponse:
     """
@@ -300,7 +311,7 @@ async def get_elevator(id: str) -> JSONResponse:
     return JSONResponse(status_code=404, content=content)
 
 
-@app.delete('/api/v1/elevators/{id}')
+@app.delete('/api/v1/elevators/{id}', tags=[Tags.elevators])
 async def delete_elevator(id: str) -> JSONResponse:
     """
     Delete the elevator

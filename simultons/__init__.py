@@ -21,6 +21,7 @@ from .schemas import (
     NewSimultonParams,
     SimultonRequest,
     SimultonResponse,
+    Tags,
 )
 from .settings import load_settings
 from .wait import wait_until_reachable
@@ -73,6 +74,7 @@ __all__ = [
     'NewElevatorParams',
     'ElevatorResponse',
     'Message',
+    'Tags',
     # simulation.py
     'Simulation',
     'SimulationState',

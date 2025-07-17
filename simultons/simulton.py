@@ -24,7 +24,7 @@ from fastapi.responses import JSONResponse
 from pydantic import parse_obj_as
 from starlette.background import BackgroundTask
 
-from .globals import simulation_zspec, simulation_ztopic
+from .globals import simulation_zspec, simulation_ztopic, module_version
 from . import (
     SimulationState,
     SimulationResponse,
@@ -61,8 +61,9 @@ class Simulton:
     """
 
     title = 'FooBar'
+    summary = 'FooBar summary'
     description = 'FooBar API'
-    version = '0.0.1'
+    version = module_version
 
     def __init__(self, name: str = '') -> None:
         # reset uvicorn logger
@@ -261,7 +262,10 @@ class Simulton:
     def create_app(cls) -> FastAPI:
         log.debug(f'Creating a FastAPI app {cls.description}')
         return FastAPI(
-            title=cls.title, description=cls.description, version=cls.version
+            title=cls.title,
+            summary=cls.summary,
+            description=cls.description,
+            version=cls.version,
         )
 
     def to_response(self) -> SimultonResponse:

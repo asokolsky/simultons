@@ -21,6 +21,7 @@ from . import (
     NewSimultonParams,
     SimultonRequest,
     SimultonResponse,
+    Tags,
     Message,
     load_settings,
     setup_logging,
@@ -284,6 +285,8 @@ class Simulation:
             raise ValueError(f'Bad path {params.src_path}')
         self._simultons[simulton.port] = simulton
         self._next_simulton_port += 1
+        # wait to hear from it...
+        simulton.wait_until_reachable(2)
         return simulton.to_response()
 
     def to_response(self) -> SimulationResponse:
@@ -335,7 +338,9 @@ async def shutdown_event() -> None:
     return
 
 
-@app.get('/api/v1/simulation', response_model=SimulationResponse, tags=['simulation'])
+@app.get(
+    '/api/v1/simulation', response_model=SimulationResponse, tags=[Tags.simulation]
+)
 async def get_simulation() -> dict:
     """
     Get the simulation state
@@ -351,7 +356,7 @@ async def get_simulation() -> dict:
     response_model=SimulationResponse,
     status_code=202,
     responses={400: {'model': Message}},
-    tags=['simulation'],
+    tags=[Tags.simulation],
 )
 async def put_simulation(req: SimulationRequest) -> JSONResponse:
     """
@@ -377,7 +382,7 @@ async def put_simulation(req: SimulationRequest) -> JSONResponse:
     response_model=SimultonResponse,
     status_code=201,
     responses={400: {'model': Message}},
-    tags=['simultons'],
+    tags=[Tags.simultons],
 )
 async def create_simulton(params: NewSimultonParams) -> SimultonResponse | JSONResponse:
     """
@@ -392,7 +397,9 @@ async def create_simulton(params: NewSimultonParams) -> SimultonResponse | JSONR
 
 
 @app.get(
-    '/api/v1/simultons', response_model=dict[int, SimultonResponse], tags=['simultons']
+    '/api/v1/simultons',
+    response_model=dict[int, SimultonResponse],
+    tags=[Tags.simultons],
 )
 async def get_simultons() -> dict:
     """
@@ -406,7 +413,7 @@ async def get_simultons() -> dict:
     '/api/v1/simultons/{id}',
     response_model=SimultonResponse,
     responses={404: {'model': Message}},
-    tags=['simultons'],
+    tags=[Tags.simultons],
 )
 async def get_simulton(id: int) -> SimultonResponse | JSONResponse:
     """

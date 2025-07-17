@@ -8,6 +8,14 @@ from fastapi_utils.enums import StrEnum
 from pydantic import BaseModel, PositiveInt
 
 
+class Tags(StrEnum):
+    simulation = 'simulation'
+    simultons = 'simultons'
+    simulton = 'simulton'
+    clocks = 'clocks'
+    elevators = 'elevators'
+
+
 class NewClockParams(BaseModel):
     """
     JSON describing new clock
