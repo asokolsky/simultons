@@ -1,7 +1,6 @@
 # Simultons Docs Roadmap
 
-There is a single [simulation](simulation.md) which provides context for
-[simulton](simulton.md)s.  Read more on:
+There is a single [simulation](simulation.md) which provides context for [simulton](simulton.md)s.  Read more on:
 
 * [Architecture](architecture.md);
 * [TODOs](./todo.md)

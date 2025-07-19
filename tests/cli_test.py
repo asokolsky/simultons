@@ -1,4 +1,5 @@
 import subprocess
+import tempfile
 import time
 import unittest
 from pathlib import Path
@@ -54,6 +55,24 @@ def run_simultons_cli(
             return -1, '', ''
 
     return popen.returncode, stdout_value, stderr_value
+
+
+def new_commands_file(cmds: list[str]) -> str:
+    """
+    Create new temp text file, and fill it with the provided commands.
+    Returns path.
+    """
+    with tempfile.NamedTemporaryFile(
+        mode='w+t', delete=False, encoding='utf-8', suffix='.txt'
+    ) as file:
+        file.write('\n'.join(cmds) + '\n')
+        return file.name
+    return ''
+
+
+def del_commands_file(name: str) -> None:
+    Path(name).unlink()
+    return
 
 
 class TestCLI(unittest.TestCase):
@@ -135,4 +154,27 @@ class TestCLI(unittest.TestCase):
                     log.debug(f'err: {stderr}')
                 cmd = ''
 
+        return
+
+    def test_script(self) -> None:
+        fname = new_commands_file([
+            'set debug true',
+            'simulation_get',
+            'quit'
+        ])
+        log.debug(f'fname: {fname}')
+        with ProcessSession(['.venv/bin/python3', '-m', 'simultons']) as session:
+            cmd = f'run_script {fname}'
+            log.debug(f'cmd: {cmd}')
+            while session.is_alive() and not session.wait(0.1):
+                stdout, stderr = session.consume_outputs(cmd)
+                if stdout:
+                    log.debug(f'out: {stdout}')
+                if stderr:
+                    log.debug(f'err: {stderr}')
+                cmd = ''
+
+
+        log.debug(f'del_commands_file({fname})')
+        del_commands_file(fname)
         return

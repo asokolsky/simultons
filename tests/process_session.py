@@ -141,3 +141,6 @@ class ProcessSession:
             elapsed = time.time() - start
             log.info(f'Waiting for {self.popen.pid} timed out after {elapsed:.3f} secs')
         return False
+
+    def is_alive(self) -> bool:
+        return self.popen is not None and self.popen.returncode is None
