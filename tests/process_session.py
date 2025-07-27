@@ -38,9 +38,14 @@ class ProcessSession:
     def __init__(
         self,
         command_line: list[str],
+        cwd: Path | None = None,
+        env: dict | None = None,
     ) -> None:
         self.popen: subprocess.Popen | None = None
         self.command_line = command_line
+        # self.cwd = Path(__file__).absolute().parents[1]
+        self.cwd = cwd
+        self.env = env
         return
 
     def __enter__(self) -> 'ProcessSession':
@@ -48,10 +53,10 @@ class ProcessSession:
         Enter the with block, start the CLI session
         """
         log.info('CliSession.__enter__()')
-        # parent_dir = Path(__file__).absolute().parents[1]
         self.popen = subprocess.Popen(
             self.command_line,
-            # cwd=parent_dir,
+            cwd=self.cwd,
+            env=self.env,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

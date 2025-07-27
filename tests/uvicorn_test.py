@@ -179,6 +179,7 @@ class TestUvicorn(unittest.TestCase):
                 path,
             ),
         )
+        assert cls.process is not None
         cls.process.start()
         res = wait_until_reachable(f'http://{host}:{port}{simulton_uri}')
         assert res is not None

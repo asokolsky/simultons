@@ -157,11 +157,7 @@ class TestCLI(unittest.TestCase):
         return
 
     def test_script(self) -> None:
-        fname = new_commands_file([
-            'set debug true',
-            'simulation_get',
-            'quit'
-        ])
+        fname = new_commands_file(['set debug true', 'simulation_get', 'quit'])
         log.debug(f'fname: {fname}')
         with ProcessSession(['.venv/bin/python3', '-m', 'simultons']) as session:
             cmd = f'run_script {fname}'
@@ -173,7 +169,6 @@ class TestCLI(unittest.TestCase):
                 if stderr:
                     log.debug(f'err: {stderr}')
                 cmd = ''
-
 
         log.debug(f'del_commands_file({fname})')
         del_commands_file(fname)
