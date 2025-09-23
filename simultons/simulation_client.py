@@ -3,6 +3,7 @@ Simulation REST client in python
 """
 
 import time
+from types import TracebackType
 from typing import Any
 
 import httpx
@@ -88,7 +89,12 @@ class SimulationClient:
         self.set_up()
         return self
 
-    def __exit__(self, exception_type, exception_value, exception_traceback) -> None:
+    def __exit__(
+        self,
+        exception_type: type[BaseException] | None,
+        exception_value: BaseException | None,
+        exception_traceback: TracebackType | None,
+    ) -> None:
         """
         Handle the exception(s)
         """
@@ -122,7 +128,7 @@ class SimulationClient:
             return None
         assert self._service is not None
         try:
-            (status_code, rdata) = self._restc.put(self.api_uri, req.model_dump())
+            (_, rdata) = self._restc.put(self.api_uri, req.model_dump())
             assert isinstance(rdata, dict)
             return rdata
         except httpx.ConnectError as err:

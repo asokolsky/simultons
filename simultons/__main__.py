@@ -18,12 +18,12 @@ from . import (
     SimulationClient,
     SimulationRequest,
     module_version,
-    print_logging_tree,
+    # print_logging_tree,
     setup_logging,
 )
 
 
-def eprint(*args) -> None:
+def eprint(*args: Any) -> None:
     print(*args, file=sys.stderr)
 
 
@@ -33,7 +33,7 @@ class SimultonsShell(cmd2.Cmd):
         self._client = client
         return
 
-    def do_simulation_get(self, args) -> None:
+    def do_simulation_get(self, args: str) -> None:
         """
         Get the simulation
         """
@@ -56,7 +56,7 @@ class SimultonsShell(cmd2.Cmd):
             self.perror(f"Error: '{args}' is not a SimulationRequest.")
         return
 
-    def do_simultons_get(self, args) -> None:
+    def do_simultons_get(self, args: str) -> None:
         """
         Get all or just one simulton
         """
@@ -67,7 +67,7 @@ class SimultonsShell(cmd2.Cmd):
         self.poutput(json.dumps(js, indent=2))
         return
 
-    def do_simultons_post(self, args) -> None:
+    def do_simultons_post(self, args: str) -> None:
         """
         Create a new simulton
         e.g. {"src_path":"simultons/clock.py"}

@@ -195,7 +195,7 @@ class TestUvicorn(unittest.TestCase):
         log.info('tearDownClass')
         assert cls.restc is not None
         params = SimultonRequest(state=SimultonState.SHUTTING)
-        (status_code, rdata) = cls.restc.put(simulton_uri, params.model_dump())
+        (status_code, _) = cls.restc.put(simulton_uri, params.model_dump())
         assert status_code == 202
 
         assert cls.pconn is not None
@@ -232,6 +232,6 @@ class TestUvicorn(unittest.TestCase):
         """
         log.info('test_all')
         assert self.restc is not None
-        (status_code, rdata) = self.restc.get(simulton_uri)
+        (status_code, _) = self.restc.get(simulton_uri)
         self.assertEqual(status_code, 200)
         return

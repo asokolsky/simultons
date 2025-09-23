@@ -24,6 +24,7 @@ import subprocess
 import time
 from collections import deque
 from pathlib import Path
+from types import TracebackType
 
 from simultons import setup_logging
 
@@ -69,7 +70,12 @@ class ProcessSession:
         os.set_blocking(self.popen.stderr.fileno(), False)
         return self
 
-    def __exit__(self, exception_type, exception_value, exception_traceback) -> None:
+    def __exit__(
+        self,
+        exception_type: type[BaseException] | None,
+        exception_value: BaseException | None,
+        exception_traceback: TracebackType | None,
+    ) -> None:
         """
         Handle the exception(s)
         """

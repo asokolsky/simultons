@@ -89,7 +89,7 @@ class SimultonProxy(Simulton):
         if self._launcher._restc is None:
             return False
         params = SimultonRequest(state=SimultonState.PAUSED)
-        (status_code, rdata) = self._launcher._restc.put(
+        (status_code, _) = self._launcher._restc.put(
             self.simulton_uri, params.model_dump()
         )
         return status_code == 202
@@ -102,7 +102,7 @@ class SimultonProxy(Simulton):
         if self._launcher._restc is None:
             return False
         params = SimultonRequest(state=SimultonState.RUNNING, rate=rate)
-        (status_code, rdata) = self._launcher._restc.put(
+        (status_code, _) = self._launcher._restc.put(
             self.simulton_uri, params.model_dump()
         )
         return status_code == 202
@@ -115,7 +115,7 @@ class SimultonProxy(Simulton):
         if self._launcher._restc is None:
             return False
         params = SimultonRequest(state=SimultonState.SHUTTING)
-        (status_code, rdata) = self._launcher._restc.put(
+        (status_code, _) = self._launcher._restc.put(
             self.simulton_uri, params.model_dump()
         )
         return status_code == 202

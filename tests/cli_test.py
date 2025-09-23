@@ -81,7 +81,7 @@ class TestCLI(unittest.TestCase):
     """
 
     def test_version(self) -> None:
-        ec, out, err = run_simultons_cli(args=['--version'])
+        ec, out, _ = run_simultons_cli(args=['--version'])
         self.assertEqual(ec, 0)
         # print('out', out)
         # print('err', err)

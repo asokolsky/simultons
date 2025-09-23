@@ -55,7 +55,7 @@ class TestSimulton(unittest.TestCase):
         # verify the FastAPI server is running
         #
         assert self.restc is not None
-        (status_code, rdata) = self.restc.get(simulton_uri)
+        (status_code, _) = self.restc.get(simulton_uri)
         self.assertEqual(status_code, 200)
         return
 

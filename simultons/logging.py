@@ -2,6 +2,7 @@ import logging
 import logging.config
 import sys
 from pathlib import Path
+from types import TracebackType
 from typing import Any
 
 import yaml
@@ -80,7 +81,11 @@ def print_logging_tree() -> None:
 log = setup_logging(__name__)
 
 
-def handle_uncaught_exception(exc_type, exc_value, exc_traceback) -> None:
+def handle_uncaught_exception(
+    exc_type: type[BaseException] | None,
+    exc_value: BaseException | None,
+    exc_traceback: TracebackType | None,
+) -> None:
     """
     Log an uncaught exception which terminates the app.
     """
