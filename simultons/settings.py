@@ -21,6 +21,6 @@ def load_settings(fname: str = 'settings.yaml') -> dict | None:
 
     except FileNotFoundError:
         log.exception(f'Error: settings file {fname} not found.')
-    except yaml.YAMLError :
+    except yaml.YAMLError:
         log.exception(f'Error parsing settings from {fname}.')
     return None

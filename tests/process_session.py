@@ -25,6 +25,7 @@ import time
 from collections import deque
 from pathlib import Path
 from types import TracebackType
+from typing import IO, Any
 
 from simultons import setup_logging
 
@@ -111,7 +112,8 @@ class ProcessSession:
 
         # retrieve stdout and stderr
 
-        def consume_output(pipe) -> str:
+        def consume_output(pipe: IO[Any] | None) -> str:
+            assert pipe is not None
             d: deque = deque()
             while True:
                 line = pipe.readline()
