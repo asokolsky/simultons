@@ -1,0 +1,47 @@
+[tools]
+mypy = 'latest'
+ruff = 'latest'
+uv = 'latest'
+
+[tasks.clean]
+description = "Do local clean-up"
+run = [
+    'rm -rf .mypy_cache .ruff_cache .venv',
+	'find . -name __pycache__ | xargs rm -rf'
+]
+
+[tasks.format]
+description = "Format python sources"
+run = [
+    # sort imports
+    #'uv run isort simultons tests',
+	'uv run ruff check --select I --fix simultons tests',
+    # reformat sources
+	'uv run ruff format -v simultons tests',
+]
+
+[tasks.lint]
+description = "Lint python sources"
+run = [
+    # check imports
+	'uv run ruff check -v --select I simultons/*.py tests/*.py',
+	'uv run ruff check -v simultons/*.py tests/*.py'
+]
+
+[tasks.mypy]
+description = "Check typing"
+run = [
+	'uv run mypy simultons tests'
+]
+
+[tasks.tests]
+description = "Execute unit tests"
+run = [
+	'uv run -m unittest -v tests/*_test.py',
+]
+
+[tasks.sim]
+description = "Run simulation REPL"
+run = [
+	'uv run -m simultons'
+]
