@@ -7,7 +7,7 @@ uv = 'latest'
 description = "Do local clean-up"
 run = [
     'rm -rf .mypy_cache .ruff_cache .venv',
-	'find . -name __pycache__ | xargs rm -rf'
+    'find . -name __pycache__ | xargs rm -rf'
 ]
 
 [tasks.format]
@@ -15,23 +15,23 @@ description = "Format python sources"
 run = [
     # sort imports
     #'uv run isort simultons tests',
-	'uv run ruff check --select I --fix simultons tests',
+    'uv run ruff check --select I --fix simultons tests',
     # reformat sources
-	'uv run ruff format -v simultons tests',
+    'uv run ruff format -v simultons tests',
 ]
 
 [tasks.lint]
 description = "Lint python sources"
 run = [
     # check imports
-	'uv run ruff check -v --select I simultons/*.py tests/*.py',
-	'uv run ruff check -v simultons/*.py tests/*.py'
+    'uv run ruff check -v --select I simultons/*.py tests/*.py',
+    'uv run ruff check -v simultons/*.py tests/*.py'
 ]
 
 [tasks.mypy]
 description = "Check typing"
 run = [
-	'uv run mypy simultons tests'
+    'uv run mypy simultons tests'
 ]
 
 [tasks.tests]
