@@ -2,7 +2,7 @@
 Schemas for the REST APIs inputs and outputs
 """
 
-from enum import auto
+import enum
 
 from fastapi_utils.enums import StrEnum
 from pydantic import BaseModel, PositiveInt
@@ -34,25 +34,6 @@ class ClockResponse(BaseModel):
     time: float
 
 
-class NewElevatorParams(BaseModel):
-    """
-    JSON used to create a new elevator
-    """
-
-    name: str
-    floors: PositiveInt
-
-
-class ElevatorResponse(BaseModel):
-    """
-    JSON describing the elevator in the body of the HTTP response
-    """
-
-    id: str
-    name: str
-    floors: PositiveInt
-
-
 class Message(BaseModel):
     """
     JSON carrying a single message in the body of the HTTP response
@@ -70,10 +51,10 @@ class SimulationState(StrEnum):
     Possible values of the simulation state
     """
 
-    INIT = auto()
-    PAUSED = auto()
-    RUNNING = auto()
-    SHUTTING = auto()
+    INIT = enum.auto()
+    PAUSED = enum.auto()
+    RUNNING = enum.auto()
+    SHUTTING = enum.auto()
 
     def __repr__(self) -> str:
         """
@@ -110,10 +91,10 @@ class SimultonState(StrEnum):
     which is somewhat related to the simulation state
     """
 
-    INIT = auto()
-    RUNNING = auto()
-    PAUSED = auto()
-    SHUTTING = auto()
+    INIT = enum.auto()
+    RUNNING = enum.auto()
+    PAUSED = enum.auto()
+    SHUTTING = enum.auto()
 
     def __repr__(self) -> str:
         """
