@@ -229,7 +229,7 @@ class Simulton:
         except Exception as e:
             log.info(f'Caught {type(e)}: {e}')
         # connection to parent
-        from .fast_launcher import connection_to_parent
+        from .fast_launcher import connection_to_parent  # noqa: PLC0415
 
         if connection_to_parent is not None:
             sys.stdout.flush()

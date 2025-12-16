@@ -33,7 +33,7 @@ class SimultonsShell(cmd2.Cmd):
         self._client = client
         return
 
-    def do_simulation_get(self, args: str) -> None:
+    def do_simulation_get(self, _: str) -> None:
         """
         Get the simulation
         """
