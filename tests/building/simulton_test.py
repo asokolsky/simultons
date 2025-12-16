@@ -4,7 +4,8 @@ Test launching/shutting FastAPI server programmatically
 
 import unittest
 
-from simultons import NewElevatorParams, SimultonProxy, rest_client, setup_logging
+from simultons import SimultonProxy, rest_client, setup_logging
+from simultons.building import NewElevatorParams
 
 simulton_uri = '/api/v1/simulton'
 elevators_uri = '/api/v1/elevators/'
@@ -26,7 +27,7 @@ class TestSimulton(unittest.TestCase):
         For all the tests
         """
         log.info('TestSimulton.setUpClass')
-        cls._service = SimultonProxy('simultons/elevator.py', 9100)
+        cls._service = SimultonProxy('simultons/building/elevator.py', 9100)
         #
         # start the simulton process
         #

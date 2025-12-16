@@ -3,7 +3,7 @@ kind: Simulton
 metadata:
   name: elevator
 spec:
-  app_path: simultons/elevator.py
+  app_path: simultons/building/elevator.py
   # implied
   #uri: /api/v1/simulton
   # that in simulation? or in simulton

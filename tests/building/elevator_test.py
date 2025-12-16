@@ -4,7 +4,8 @@ Testing the elevator-related stuff
 
 import unittest
 
-from simultons import Elevator, setup_logging
+from simultons import setup_logging
+from simultons.building import Elevator
 
 log = setup_logging(__name__)
 

@@ -2,8 +2,9 @@ import unittest
 
 from fastapi.testclient import TestClient
 
-from simultons import ElevatorResponse, NewElevatorParams, setup_logging
-from simultons.elevator import app
+from simultons import setup_logging
+from simultons.building import ElevatorResponse, NewElevatorParams
+from simultons.building.elevator import app
 
 elevators_uri = '/api/v1/elevators/'
 

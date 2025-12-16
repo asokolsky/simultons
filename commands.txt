@@ -2,7 +2,7 @@ set debug true
 simulation_put {"state":"RUNNING","rate":1.0}
 
 simultons_post {"src_path":"simultons/clock.py"}
-simultons_post {"src_path":"simultons/elevator.py"}
+simultons_post {"src_path":"simultons/building/elevator.py"}
 
 simulation_put {"state":"SHUTTING","rate":1.0}
 quit

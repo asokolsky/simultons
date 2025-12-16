@@ -92,7 +92,7 @@ class TestCLI(unittest.TestCase):
         cmds = [
             'simultons_get',
             #'simultons_post  {"src_path":"simultons/clock.py"}',
-            #'simultons_post  {"src_path":"simultons/elevator.py"}',
+            #'simultons_post  {"src_path":"simultons/building/elevator.py"}',
             #'simultons_get',
             #'simulation_get',
             'quit',

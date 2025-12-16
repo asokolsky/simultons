@@ -24,8 +24,8 @@ run = [
 description = "Lint python sources"
 run = [
     # check imports
-    'uv run ruff check -v --select I simultons/*.py tests/*.py',
-    'uv run ruff check -v simultons/*.py tests/*.py'
+    'uv run ruff check -v --select I simultons tests',
+    'uv run ruff check -v simultons tests'
 ]
 
 [tasks.mypy]
@@ -37,7 +37,7 @@ run = [
 [tasks.tests]
 description = "Execute unit tests"
 run = [
-	'uv run -m unittest -v tests/*_test.py',
+	'uv run -m unittest -v tests/*_test.py tests/building/*_test.py',
 ]
 
 [tasks.sim]

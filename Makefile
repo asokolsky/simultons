@@ -26,8 +26,8 @@ tests:									## Execute unit tests
 
 lint:									## Lint python sources
 # check imports
-	uv run ruff check -v --select I simultons/*.py tests/*.py
-	uv run ruff check -v simultons/*.py tests/*.py
+	uv run ruff check -v --select I simultons tests
+	uv run ruff check -v simultons tests
 
 format:									## Format python sources
 # sort imports
