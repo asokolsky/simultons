@@ -2,12 +2,10 @@
 
 ## TODO
 
+* [issue 1](https://github.com/asokolsky/simultons/issues/1): verify that simulation iterates without blocking over simultons
 * interactive use via REPL
-
 * use python `with-as` pattern (see [contextlib](https://docs.python.org/3/library/contextlib.html)) to allow for creation of universe filled with simultons;
-
 * full blow simulation of riders/elevators;
-
 * API-based JavaScript GUI for the elevator simulation.
 
 ## DONE
