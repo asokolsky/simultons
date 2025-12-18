@@ -13,6 +13,8 @@ from simultons import (
     NewSimultonParams,
     SimulationRequest,
     SimulationState,
+    api_simulation,
+    api_simultons,
     load_settings,
     rest_client,
     setup_logging,
@@ -25,9 +27,6 @@ class SimulationClient:
     """
     Python client to talk to the simulation using REST API.
     """
-
-    api_uri = '/api/v1/simulation'
-    simultons_uri = '/api/v1/simultons'
 
     def __init__(self, fname: str = 'settings.yaml') -> None:
         log.debug(f'SimulationClient: {fname}')
@@ -53,8 +52,8 @@ class SimulationClient:
         self._service = FastLauncher(source, port)
         pid = self._service.launch()
         log.debug(f'FastLauncher({source}, {port}).launch() => {pid}')
-        res = self._service.wait_until_reachable(self.api_uri)
-        log.debug(f'wait_until_reachable({self.api_uri}) => {res}')
+        res = self._service.wait_until_reachable(api_simulation)
+        log.debug(f'wait_until_reachable({api_simulation}) => {res}')
         expected = {'state': 'PAUSED', 'rate': 0.0}
         assert res == expected
         #
@@ -105,11 +104,14 @@ class SimulationClient:
         return
 
     def get_simulation(self) -> dict | None:
+        """
+        Issue an HTTP GET to the simulation
+        """
         if self._restc is None:
             log.info('get_simulation failed - _restc is None')
             return None
         try:
-            (status_code, rdata) = self._restc.get(self.api_uri)
+            (status_code, rdata) = self._restc.get(api_simulation)
             assert status_code == 200
             assert isinstance(rdata, dict)
             return rdata
@@ -128,7 +130,7 @@ class SimulationClient:
             return None
         assert self._service is not None
         try:
-            (_, rdata) = self._restc.put(self.api_uri, req.model_dump())
+            (_, rdata) = self._restc.put(api_simulation, req.model_dump())
             assert isinstance(rdata, dict)
             return rdata
         except httpx.ConnectError as err:
@@ -144,7 +146,7 @@ class SimulationClient:
         if self._restc is None:
             log.info('post_simulton failed - _restc is None')
             return None
-        (status_code, rdata) = self._restc.post(self.simultons_uri, params.model_dump())
+        (status_code, rdata) = self._restc.post(api_simultons, params.model_dump())
         assert status_code == 201
         assert isinstance(rdata, dict)
         return rdata
@@ -156,7 +158,7 @@ class SimulationClient:
         if self._restc is None:
             log.info('get_simultons failed - _restc is None')
             return None
-        (status_code, rdata) = self._restc.get(self.simultons_uri)
+        (status_code, rdata) = self._restc.get(api_simultons)
         assert status_code == 200
         assert isinstance(rdata, dict)
         return rdata
@@ -168,7 +170,7 @@ class SimulationClient:
         if self._restc is None:
             log.info(f'get_simulton({id}) failed - _restc is None')
         else:
-            (status_code, rdata) = self._restc.get(f'{self.simultons_uri}/{id}')
+            (status_code, rdata) = self._restc.get(f'{api_simultons}/{id}')
             if status_code == 200:
                 assert isinstance(rdata, dict)
                 return rdata

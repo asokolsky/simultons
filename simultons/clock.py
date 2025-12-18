@@ -7,6 +7,8 @@ import time
 from fastapi.responses import JSONResponse
 
 from . import (
+    api_simulton,
+    api_clocks,
     SimultonState,
     Simulton,
     SimultonRequest,
@@ -91,6 +93,7 @@ class ClockSimulton(Simulton):
     title = 'Clock'
     summary = 'Clock API'
     description = 'Clock API runs at simulation time'
+    endpoint = api_clocks
 
     def __init__(self) -> None:
         """
@@ -143,7 +146,7 @@ async def shutdown_event() -> None:
     return
 
 
-@app.get('/api/v1/simulton', response_model=SimultonResponse, tags=[Tags.simulton])
+@app.get(api_simulton, response_model=SimultonResponse, tags=[Tags.simulton])
 async def get_simulton() -> SimultonResponse:
     log.debug('get clock simulton')
     # global theClockSimulton
@@ -151,7 +154,7 @@ async def get_simulton() -> SimultonResponse:
     return theClockSimulton.to_response()
 
 
-@app.put('/api/v1/simulton', tags=[Tags.simulton])
+@app.put(api_simulton, tags=[Tags.simulton])
 async def put_simulton(req: SimultonRequest) -> JSONResponse:
     """
     Handle a request to change the simulton state
@@ -160,7 +163,7 @@ async def put_simulton(req: SimultonRequest) -> JSONResponse:
     return theClockSimulton.on_put_simulton(req)
 
 
-@app.get('/api/v1/clocks/', response_model=dict[str, ClockResponse], tags=[Tags.clocks])
+@app.get(api_clocks, response_model=dict[str, ClockResponse], tags=[Tags.clocks])
 async def get_instances() -> dict:
     """
     Get all the instances
@@ -173,9 +176,7 @@ async def get_instances() -> dict:
     }
 
 
-@app.post(
-    '/api/v1/clocks/', response_model=ClockResponse, status_code=201, tags=[Tags.clocks]
-)
+@app.post(api_clocks, response_model=ClockResponse, status_code=201, tags=[Tags.clocks])
 async def create_instance(params: NewClockParams) -> dict:
     """
     Handle new instance creation
@@ -185,7 +186,7 @@ async def create_instance(params: NewClockParams) -> dict:
     return cl.to_response().model_dump()
 
 
-@app.get('/api/v1/clocks/{id}', response_model=ClockResponse, tags=[Tags.clocks])
+@app.get(api_clocks + '/{id}', response_model=ClockResponse, tags=[Tags.clocks])
 async def get_clock(id: str) -> dict | JSONResponse:
     """
     Get the simulated time
@@ -200,7 +201,7 @@ async def get_clock(id: str) -> dict | JSONResponse:
     return JSONResponse(status_code=404, content=content)
 
 
-@app.delete('/api/v1/clocks/{id}', tags=[Tags.clocks])
+@app.delete(api_clocks + '/{id}', tags=[Tags.clocks])
 async def delete_clock(id: str) -> JSONResponse:
     """
     Delete the clock

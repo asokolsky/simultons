@@ -6,7 +6,15 @@ Playing with FastAPI, pydantic while simulating stuff
 from .logging import setup_logging, print_logging_tree
 from .arestc import async_rest_client
 from .restc import rest_client
-from .globals import simulation_zspec, simulation_ztopic, module_version
+from .globals import (
+    simulation_zspec,
+    simulation_ztopic,
+    module_version,
+    api_simulation,
+    api_simultons,
+    api_simulton,
+    api_clocks,
+)
 from .schemas import (
     NewClockParams,
     ClockResponse,
@@ -36,6 +44,10 @@ __all__ = [
     # globals.py
     'simulation_ztopic',
     'simulation_zspec',
+    'api_simulation',
+    'api_simultons',
+    'api_simulton',
+    'api_clocks',
     # arestc.py
     'async_rest_client',
     # clock.py

@@ -135,6 +135,7 @@ class SimultonResponse(BaseModel):
     """
 
     description: str
+    endpoint: str
     port: PositiveInt | None = None
     rate: float
     state: SimultonState

@@ -15,6 +15,7 @@ from simultons import (
     SimultonRequest,
     SimultonResponse,
     Tags,
+    api_simulton,
     get_random_id,
     setup_logging,
 )
@@ -22,6 +23,8 @@ from simultons import (
 from . import ButtonWithLedPanel, ElevatorResponse, NewElevatorParams
 
 log = setup_logging(__name__)
+
+api_elevators = '/api/v1/elevators'
 
 
 class LoadValue(StrEnum):
@@ -238,7 +241,7 @@ async def shutdown_event() -> None:
     return
 
 
-@app.get('/api/v1/simulton', response_model=SimultonResponse, tags=[Tags.simulton])
+@app.get(api_simulton, response_model=SimultonResponse, tags=[Tags.simulton])
 async def get_simulton() -> SimultonResponse:
     log.debug('get elevator simulton')
     # global theElevatorSimulton
@@ -246,7 +249,7 @@ async def get_simulton() -> SimultonResponse:
     return theElevatorSimulton.to_response()
 
 
-@app.put('/api/v1/simulton', tags=[Tags.simulton])
+@app.put(api_simulton, tags=[Tags.simulton])
 async def put_simulton(req: SimultonRequest) -> JSONResponse:
     """
     Handle a request to change the simulton state
@@ -257,7 +260,7 @@ async def put_simulton(req: SimultonRequest) -> JSONResponse:
 
 
 @app.get(
-    '/api/v1/elevators/',
+    api_elevators,
     response_model=dict[str, ElevatorResponse],
     tags=[Tags.elevators],
 )
@@ -275,7 +278,7 @@ async def get_instances() -> dict:
 
 
 @app.post(
-    '/api/v1/elevators/',
+    api_elevators,
     response_model=ElevatorResponse,
     status_code=201,
     tags=[Tags.elevators],
@@ -290,7 +293,7 @@ async def create_instance(params: NewElevatorParams) -> dict:
 
 
 @app.get(
-    '/api/v1/elevators/{id}',
+    api_elevators + '/{id}',
     response_model=ElevatorResponse,
     responses={404: {'model': Message}},
     tags=[Tags.elevators],
@@ -310,7 +313,7 @@ async def get_elevator(id: str) -> JSONResponse:
     return JSONResponse(status_code=404, content=content)
 
 
-@app.delete('/api/v1/elevators/{id}', tags=[Tags.elevators])
+@app.delete(api_elevators + '/{id}', tags=[Tags.elevators])
 async def delete_elevator(id: str) -> JSONResponse:
     """
     Delete the elevator

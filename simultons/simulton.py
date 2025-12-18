@@ -63,6 +63,7 @@ class Simulton:
     title = 'FooBar'
     summary = 'FooBar summary'
     description = 'FooBar API'
+    endpoint = '/api/v1/foobar'
     version = module_version
 
     def __init__(self, name: str = '') -> None:
@@ -71,8 +72,8 @@ class Simulton:
         # from .logging import print_logging_tree
         # print_logging_tree()
 
-        self._state = SimultonState.INIT
         self._rate: float = 0
+        self._state = SimultonState.INIT
         if not name:
             name = f'{type(self).__qualname__}@{hex(id(self))}'
         self._name = name
@@ -271,6 +272,7 @@ class Simulton:
     def to_response(self) -> SimultonResponse:
         return SimultonResponse(
             description=self.description,
+            endpoint=self.endpoint,
             rate=self.rate,
             state=self.state,
             title=self.title,

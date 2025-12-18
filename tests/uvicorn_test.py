@@ -20,6 +20,7 @@ import uvicorn
 from simultons import (
     SimultonRequest,
     SimultonState,
+    api_simulton,
     rest_client,
     setup_logging,
     wait_until_reachable,
@@ -145,7 +146,6 @@ def launch_uvicorn(conn: Connection, host: str, port: int, path: Path) -> None:
 
 host = '127.0.0.1'
 port = 8000
-simulton_uri = '/api/v1/simulton'
 
 
 class TestUvicorn(unittest.TestCase):
@@ -181,7 +181,7 @@ class TestUvicorn(unittest.TestCase):
         )
         assert cls.process is not None
         cls.process.start()
-        res = wait_until_reachable(f'http://{host}:{port}{simulton_uri}')
+        res = wait_until_reachable(f'http://{host}:{port}{api_simulton}')
         assert res is not None
 
         cls.restc = rest_client(host, port, True, True)  # noqa: FBT003
@@ -195,7 +195,7 @@ class TestUvicorn(unittest.TestCase):
         log.info('tearDownClass')
         assert cls.restc is not None
         params = SimultonRequest(state=SimultonState.SHUTTING)
-        (status_code, _) = cls.restc.put(simulton_uri, params.model_dump())
+        (status_code, _) = cls.restc.put(api_simulton, params.model_dump())
         assert status_code == 202
 
         assert cls.pconn is not None
@@ -232,6 +232,6 @@ class TestUvicorn(unittest.TestCase):
         """
         log.info('test_all')
         assert self.restc is not None
-        (status_code, _) = self.restc.get(simulton_uri)
+        (status_code, _) = self.restc.get(api_simulton)
         self.assertEqual(status_code, 200)
         return

@@ -12,6 +12,9 @@ import zmq.asyncio
 from .globals import simulation_zspec, simulation_ztopic, module_version
 
 from . import (
+    api_simulation,
+    api_simultons,
+    api_simulton,
     FastLauncher,
     SimulationState,
     SimulationRequest,
@@ -37,19 +40,21 @@ class SimultonProxy(Simulton):
     This class is used by the simulation to talk to the simultons.
     """
 
-    simulton_uri = '/api/v1/simulton'
-
     def __init__(self, source_path: str, port: int) -> None:
         super().__init__()
         self._launcher = FastLauncher(source_path, port)
-        self.title = ''
         self.description = ''
+        self.endpoint = ''
+        self.title = ''
+        self.rate = self._rate
+        self.state = self._state
         self.version = ''
         return
 
     def to_response(self) -> SimultonResponse:
         return SimultonResponse(
             description=self.description,
+            endpoint=self.endpoint,
             port=self.port,
             rate=self.rate,
             state=self.state,
@@ -70,11 +75,12 @@ class SimultonProxy(Simulton):
         return self._launcher.launch()
 
     def wait_until_reachable(self, timeout: int = 20) -> bool:
-        log.debug(f'SimultonProxy.wait_until_reachable({self.simulton_uri})')
-        jresp = self._launcher.wait_until_reachable(self.simulton_uri, timeout)
-        log.debug(f'SimultonProxy.wait_until_reachable({self.simulton_uri}) => {jresp}')
+        log.debug(f'SimultonProxy.wait_until_reachable({api_simulton})')
+        jresp = self._launcher.wait_until_reachable(api_simulton, timeout)
+        log.debug(f'SimultonProxy.wait_until_reachable({api_simulton}) => {jresp}')
         assert isinstance(jresp, dict)
         self.description = jresp['description']
+        self.endpoint = jresp['endpoint']
         self.rate = jresp['rate']
         self.title = jresp['title']
         self.version = jresp['version']
@@ -89,9 +95,7 @@ class SimultonProxy(Simulton):
         if self._launcher._restc is None:
             return False
         params = SimultonRequest(state=SimultonState.PAUSED)
-        (status_code, _) = self._launcher._restc.put(
-            self.simulton_uri, params.model_dump()
-        )
+        (status_code, _) = self._launcher._restc.put(api_simulton, params.model_dump())
         return status_code == 202
 
     def run(self, rate: float = 1.0) -> bool:
@@ -102,9 +106,7 @@ class SimultonProxy(Simulton):
         if self._launcher._restc is None:
             return False
         params = SimultonRequest(state=SimultonState.RUNNING, rate=rate)
-        (status_code, _) = self._launcher._restc.put(
-            self.simulton_uri, params.model_dump()
-        )
+        (status_code, _) = self._launcher._restc.put(api_simulton, params.model_dump())
         return status_code == 202
 
     def shutting(self) -> bool:
@@ -115,9 +117,7 @@ class SimultonProxy(Simulton):
         if self._launcher._restc is None:
             return False
         params = SimultonRequest(state=SimultonState.SHUTTING)
-        (status_code, _) = self._launcher._restc.put(
-            self.simulton_uri, params.model_dump()
-        )
+        (status_code, _) = self._launcher._restc.put(api_simulton, params.model_dump())
         return status_code == 202
 
     def shutdown(self) -> None:
@@ -157,6 +157,8 @@ class Simulation:
         self._zsocket = self._zcontext.socket(zmq.PUB)
         self._zsocket.bind(self._zspec)
         # simulton accumulator
+        # NOTE: do NOT use _simultons to iterate and communicate with simultons
+        # instead use _zsocket to broadcast the update to all the simultons
         self._simultons: dict[int, SimultonProxy] = {}
         settings = load_settings()
         log.debug(f'settings: {settings}')
@@ -338,9 +340,7 @@ async def shutdown_event() -> None:
     return
 
 
-@app.get(
-    '/api/v1/simulation', response_model=SimulationResponse, tags=[Tags.simulation]
-)
+@app.get(api_simulation, response_model=SimulationResponse, tags=[Tags.simulation])
 async def get_simulation() -> dict:
     """
     Get the simulation state
@@ -352,7 +352,7 @@ async def get_simulation() -> dict:
 
 
 @app.put(
-    '/api/v1/simulation',
+    api_simulation,
     response_model=SimulationResponse,
     status_code=202,
     responses={400: {'model': Message}},
@@ -378,7 +378,7 @@ async def put_simulation(req: SimulationRequest) -> JSONResponse:
 
 
 @app.post(
-    '/api/v1/simultons',
+    api_simultons,
     response_model=SimultonResponse,
     status_code=201,
     responses={400: {'model': Message}},
@@ -397,7 +397,7 @@ async def create_simulton(params: NewSimultonParams) -> SimultonResponse | JSONR
 
 
 @app.get(
-    '/api/v1/simultons',
+    api_simultons,
     response_model=dict[int, SimultonResponse],
     tags=[Tags.simultons],
 )
@@ -406,11 +406,12 @@ async def get_simultons() -> dict:
     Get the simulation rate
     """
     assert theSimulation is not None
+    # NOTE: this does NOT involve talking to simultons
     return {port: s.to_response() for port, s in theSimulation._simultons.items()}
 
 
 @app.get(
-    '/api/v1/simultons/{id}',
+    api_simultons + '/{id}',
     response_model=SimultonResponse,
     responses={404: {'model': Message}},
     tags=[Tags.simultons],
@@ -421,8 +422,8 @@ async def get_simulton(id: int) -> SimultonResponse | JSONResponse:
     """
     assert theSimulation is not None
     try:
-        sim = theSimulation._simultons[id]
+        return theSimulation._simultons[id].to_response()
     except IndexError:
-        content = Message('Item not found').model_dump()
-        return JSONResponse(status_code=404, content=content)
-    return sim.to_response()
+        pass
+    content = Message('Item not found').model_dump()
+    return JSONResponse(status_code=404, content=content)

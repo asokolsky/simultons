@@ -9,6 +9,7 @@ from simultons import (
     NewSimultonParams,
     SimulationClient,
     SimultonResponse,
+    api_simulton,
     setup_logging,
     wait_until_reachable,
 )
@@ -69,6 +70,10 @@ class TestSimulation(unittest.TestCase):
         # let's run simulation with no simultons now
         #
         log.info('test_minimal running')
+        rdata = self._client.get_simultons()
+        log.info(f'self._client.get_simultons() => {rdata}')
+        expected = {}
+        self.assertEqual(rdata, expected)
         #
         # lets stop simulation
         #
@@ -116,9 +121,9 @@ class TestSimulation(unittest.TestCase):
         self.assertEqual(len(sims), 1)
         for port in sims:
             # reach out to the sim!
-            url = f'http://127.0.0.1:{port}/api/v1/clocks/'
+            url = f'http://127.0.0.1:{port}{api_simulton}'
             res = wait_until_reachable(url)
-            log.debug(f'Clocks: {res}')
+            log.debug(f'simulton: {res}')
             self.assertIsNotNone(res)
         return
 
