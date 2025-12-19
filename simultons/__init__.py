@@ -14,6 +14,7 @@ from .globals import (
     api_simultons,
     api_simulton,
     api_clocks,
+    api_elevators,
 )
 from .schemas import (
     NewClockParams,
@@ -34,9 +35,10 @@ from .wait import wait_until_reachable
 # order is important to avoid circular dependency!
 from .fast_launcher import FastLauncher
 from .simulton import get_random_id, Simulton, shut_the_process
-from .clock import Clock
-from .simulation import Simulation, SimultonProxy, theSimulation
+from .simulton_proxy import SimultonProxy
+from .simulation import Simulation, theSimulation
 from .simulation_client import SimulationClient
+from .clock import Clock
 
 __version__ = module_version
 
@@ -48,6 +50,7 @@ __all__ = [
     'api_simultons',
     'api_simulton',
     'api_clocks',
+    'api_elevators',
     # arestc.py
     'async_rest_client',
     # clock.py

@@ -1,5 +1,5 @@
 """
-Clock simulation & simulton
+Clocks simulton
 """
 
 # ruff: noqa: I001
@@ -28,7 +28,7 @@ class Clock:
     Clock counting simulated time
     """
 
-    def __init__(self, sim: Simulton, name: str) -> None:
+    def __init__(self, sim: Simulton, name: str, latency: float) -> None:
         """
         Initializer
         """
@@ -37,6 +37,7 @@ class Clock:
         self._id = sim.get_new_instance_id()
         sim.add_instance(self, self._id)
         self._name = name
+        self._latency = latency
         # accumulated simulation time until the last pause
         self._time: float = 0
         # os clock
@@ -82,17 +83,23 @@ class Clock:
         return self._time + ((time.time() - self._last_start) * rate)
 
     def to_response(self) -> ClockResponse:
+        """
+        Return ClockResponse presentation of this clock.
+        sleep self._latency seconds to simulate the network latency.
+        """
+        if self._latency != 0.0:
+            time.sleep(self._latency)
         return ClockResponse(id=self._id, name=self._name, time=self.time)
 
 
-class ClockSimulton(Simulton):
+class ClocksSimulton(Simulton):
     """
-    Clock counting simulated time
+    Simulton for a collection of clocks counting simulated time.
     """
 
-    title = 'Clock'
-    summary = 'Clock API'
-    description = 'Clock API runs at simulation time'
+    title = 'Clocks'
+    summary = 'Clocks API'
+    description = 'Clocks API runs at simulation time'
     endpoint = api_clocks
 
     def __init__(self) -> None:
@@ -106,7 +113,7 @@ class ClockSimulton(Simulton):
         """
         State just transitioned to RUNNING
         """
-        log.debug('ClockSimulton.on_running')
+        log.debug('ClocksSimulton.on_running')
         # notify all the clocks about the change
         for clock in self.instances.values():
             clock.on_running(self._rate)
@@ -116,42 +123,42 @@ class ClockSimulton(Simulton):
         """
         State just transitioned to PAUSED
         """
-        log.debug('ClockSimulton.on_paused')
+        log.debug('ClocksSimulton.on_paused')
         # notify all the clocks about the change
         for clock in self.instances.values():
             clock.on_paused()
         return
 
 
-theClockSimulton: ClockSimulton | None = None  # noqa: N816
-app = ClockSimulton.create_app()
+theClocks: ClocksSimulton | None = None  # noqa: N816
+app = ClocksSimulton.create_app()
 
 
 @app.on_event('startup')
 async def startup_event() -> None:
-    log.debug('clock simulton startup_event')
-    global theClockSimulton
-    theClockSimulton = ClockSimulton()
-    theClockSimulton.on_startup()
+    log.debug('clocks simulton startup_event')
+    global theClocks
+    theClocks = ClocksSimulton()
+    theClocks.on_startup()
     return
 
 
 @app.on_event('shutdown')
 async def shutdown_event() -> None:
-    global theClockSimulton
-    log.debug(f'clock simulton shutdown_event {theClockSimulton}')
-    assert theClockSimulton is not None
-    theClockSimulton.on_shutdown()
-    theClockSimulton = None
+    global theClocks
+    log.debug(f'clocks simulton shutdown_event {theClocks}')
+    assert theClocks is not None
+    theClocks.on_shutdown()
+    theClocks = None
     return
 
 
 @app.get(api_simulton, response_model=SimultonResponse, tags=[Tags.simulton])
 async def get_simulton() -> SimultonResponse:
     log.debug('get clock simulton')
-    # global theClockSimulton
-    assert theClockSimulton is not None
-    return theClockSimulton.to_response()
+    # global theClocks
+    assert theClocks is not None
+    return theClocks.to_response()
 
 
 @app.put(api_simulton, tags=[Tags.simulton])
@@ -159,8 +166,8 @@ async def put_simulton(req: SimultonRequest) -> JSONResponse:
     """
     Handle a request to change the simulton state
     """
-    assert theClockSimulton is not None
-    return theClockSimulton.on_put_simulton(req)
+    assert theClocks is not None
+    return theClocks.on_put_simulton(req)
 
 
 @app.get(api_clocks, response_model=dict[str, ClockResponse], tags=[Tags.clocks])
@@ -168,12 +175,9 @@ async def get_instances() -> dict:
     """
     Get all the instances
     """
-    if theClockSimulton is None:
+    if theClocks is None:
         return {}
-    return {
-        id: cl.to_response().model_dump()
-        for id, cl in theClockSimulton.instances.items()
-    }
+    return {id: cl.to_response().model_dump() for id, cl in theClocks.instances.items()}
 
 
 @app.post(api_clocks, response_model=ClockResponse, status_code=201, tags=[Tags.clocks])
@@ -181,8 +185,8 @@ async def create_instance(params: NewClockParams) -> dict:
     """
     Handle new instance creation
     """
-    assert theClockSimulton is not None
-    cl = Clock(theClockSimulton, params.name)
+    assert theClocks is not None
+    cl = Clock(theClocks, params.name, params.latency)
     return cl.to_response().model_dump()
 
 
@@ -191,9 +195,9 @@ async def get_clock(id: str) -> dict | JSONResponse:
     """
     Get the simulated time
     """
-    assert theClockSimulton is not None
+    assert theClocks is not None
     try:
-        cl: Clock = theClockSimulton.get_instance_by_id(id)
+        cl: Clock = theClocks.get_instance_by_id(id)
         return cl.to_response().model_dump()
     except KeyError:
         pass
@@ -206,9 +210,9 @@ async def delete_clock(id: str) -> JSONResponse:
     """
     Delete the clock
     """
-    assert theClockSimulton is not None
+    assert theClocks is not None
     try:
-        theClockSimulton.del_instance_by_id(id)
+        theClocks.del_instance_by_id(id)
         content = Message('OK').model_dump()
         return JSONResponse(status_code=200, content=content)
     except KeyError:

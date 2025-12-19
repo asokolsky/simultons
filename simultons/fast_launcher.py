@@ -2,12 +2,13 @@
 FastAPI process launcher
 """
 
-import contextlib
+import asyncio
 import os
 import signal
 import sys
 import time
 from collections import deque
+from contextlib import suppress
 from dataclasses import dataclass
 from multiprocessing import get_context
 from multiprocessing.connection import Connection
@@ -16,7 +17,7 @@ from typing import Any
 
 import uvicorn
 
-from . import rest_client, wait_until_reachable
+from . import async_rest_client, rest_client, wait_until_reachable
 from .logging import logging_config, setup_logging
 
 log = setup_logging(__name__)
@@ -61,7 +62,7 @@ class PipeWriter:
         self.conn = conn
 
     def write(self, text: Any) -> None:
-        with contextlib.suppress(OSError):
+        with suppress(OSError):
             self.conn.send(text)
 
     def flush(self) -> None:
@@ -147,7 +148,8 @@ class FastLauncher:
         #
         verbose = True
         dumpHeaders = False
-        self._restc: rest_client | None = self.get_rest_client(verbose, dumpHeaders)
+        self._arestc = async_rest_client(self._host, self._port, verbose, dumpHeaders)
+        self._restc = rest_client(self._host, self._port, verbose, dumpHeaders)
         return
 
     @property
@@ -267,13 +269,14 @@ class FastLauncher:
                     log.info(f'{line}')
             log.info(f'{dashes} {self._path} {self._process.pid} end {dashes}')
 
-        # close the socket
+        # close the sockets
         if self._restc is not None:
             self._restc.close()
             self._restc = None
+        if self._arestc is not None:
+            with suppress(RuntimeError):
+                asyncio.run(self._arestc.close())
+            self._arestc = None
         assert self._conn is not None
         self._conn.close()
         return res
-
-    def get_rest_client(self, verbose: bool, dumpHeaders: bool) -> rest_client:
-        return rest_client(self._host, self._port, verbose, dumpHeaders)

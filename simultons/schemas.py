@@ -22,6 +22,7 @@ class NewClockParams(BaseModel):
     """
 
     name: str
+    latency: float
 
 
 class ClockResponse(BaseModel):

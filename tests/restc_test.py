@@ -7,6 +7,7 @@
 import asyncio
 import time
 import unittest
+from contextlib import suppress
 from json import loads
 
 import httpx
@@ -47,16 +48,19 @@ class TestRestC(unittest.TestCase):
         port = 80
         verbose = True
         dumpHeaders = False
-        self.cl = rest_client(self.host, port, verbose, dumpHeaders)
-        self.acl = async_rest_client(self.host, port, verbose, dumpHeaders)
-
+        self.restc = rest_client(self.host, port, verbose, dumpHeaders)
+        self.arestc = async_rest_client(self.host, port, verbose, dumpHeaders)
         return
 
     def tearDown(self) -> None:
         """
         Executed after each test
         """
-        self.cl.close()
+        self.restc.close()
+        self.restc = None
+        with suppress(RuntimeError):
+            asyncio.run(self.arestc.close())
+        self.arestc = None
         return
 
     def test_get(self) -> None:
@@ -64,13 +68,13 @@ class TestRestC(unittest.TestCase):
         Test rest_client.get
         """
         uri = '/ip'
-        (status_code, rdata) = self.cl.get(uri)
+        (status_code, rdata) = self.restc.get(uri)
         self.assertEqual(status_code, 200)
         self.assertEqual(len(rdata), 1)
         self.assertIn('origin', rdata)
 
         uri = '/user-agent'
-        (status_code, rdata) = self.cl.get(uri)
+        (status_code, rdata) = self.restc.get(uri)
         self.assertEqual(status_code, 200)
         self.assertEqual(len(rdata), 1)
         self.assertIn('user-agent', rdata)
@@ -78,7 +82,7 @@ class TestRestC(unittest.TestCase):
         self.assertTrue(ua.startswith('python'))
 
         uri = '/get'
-        (status_code, rdata) = self.cl.get(uri)
+        (status_code, rdata) = self.restc.get(uri)
         self.assertEqual(status_code, 200)
         expected = {
             'args': {},
@@ -119,7 +123,7 @@ class TestRestC(unittest.TestCase):
             'b': 1234,
             'c': {'d': ['I', 'love', 'REST'], 'e': 'done'},
         }
-        (status_code, rdata) = self.cl.post(uri, da)
+        (status_code, rdata) = self.restc.post(uri, da)
         self.assertEqual(status_code, 200)
         expected = {
             'args': {},
@@ -168,7 +172,7 @@ class TestRestC(unittest.TestCase):
         Test rest_client.delete
         """
         uri = '/delete'
-        (status_code, rdata) = self.cl.delete(uri)
+        (status_code, rdata) = self.restc.delete(uri)
         self.assertEqual(status_code, 200)
         expected = {
             'args': {},
@@ -210,7 +214,7 @@ class TestRestC(unittest.TestCase):
             'b': 1234,
             'c': {'d': ['I', 'love', 'REST'], 'e': 'done'},
         }
-        (status_code, rdata) = self.cl.put(uri, da)
+        (status_code, rdata) = self.restc.put(uri, da)
         self.assertEqual(status_code, 200)
         expected = {
             'args': {},
@@ -258,7 +262,7 @@ class TestRestC(unittest.TestCase):
             'b': 1234,
             'c': {'d': ['I', 'love', 'REST'], 'e': 'done'},
         }
-        (status_code, rdata) = self.cl.patch(uri, da)
+        (status_code, rdata) = self.restc.patch(uri, da)
         self.assertEqual(status_code, 200)
         expected = {
             'args': {},
@@ -298,7 +302,7 @@ class TestRestC(unittest.TestCase):
 
     # async def get_one(self, uri: str) -> int:
     #    # response = await client.get(uri)
-    #    sc, jresp = self.acl.get(uri)
+    #    sc, jresp = self.arestc.get(uri)
     #    return sc
 
     async def get_many(self) -> None:
@@ -308,11 +312,11 @@ class TestRestC(unittest.TestCase):
         log.info(f'Retrieving {len(uris)} URIs in parallel')
         start = time.time()
 
-        results = await asyncio.gather(*(self.acl.get(uri) for uri in uris))
+        results = await asyncio.gather(*(self.arestc.get(uri) for uri in uris))
 
         elapsed = time.time() - start
-        log.info(results)
         log.info(f'Retrieved {len(uris)} URIs in {elapsed:.3f} secs')
+        log.info(f'asyncio.gather => {results}')
         return
 
     def test_multiple_gets_parallel(self) -> None:
@@ -335,7 +339,7 @@ class TestRestC(unittest.TestCase):
         start = time.time()
 
         for uri in uris:
-            self.cl.get(uri)
+            self.restc.get(uri)
 
         elapsed = time.time() - start
         log.info(f'Retrieved {len(uris)} URIs in {elapsed:.3f} secs')

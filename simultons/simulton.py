@@ -93,20 +93,25 @@ class Simulton:
         Background async task to receive zmq data
         """
         log.debug('Simulton.recv_zmq_string..')
-        res = await self._zsocket.recv_string()
-        log.debug(f'Simulton.recv_zmq_string() => {res}')
-        topic, message = res.split()
-        assert topic == simulation_ztopic
-        # dispatch message
         try:
-            self.on_simulation_state_update(
-                parse_obj_as(SimulationResponse, json.loads(message))
-            )
-        except json.JSONDecodeError as err:
-            log.info(f'recv_zmq_string caught JSONDecodeError: {err}')
-        except Exception as err:
-            log.info(f'recv_zmq_string caught Exception: {err}')
-        return message
+            res = await self._zsocket.recv_string()
+            log.debug(f'Simulton.recv_zmq_string() => {res}')
+            topic, message = res.split()
+            assert topic == simulation_ztopic
+            # dispatch message
+            try:
+                self.on_simulation_state_update(
+                    parse_obj_as(SimulationResponse, json.loads(message))
+                )
+            except json.JSONDecodeError as err:
+                log.info(f'recv_zmq_string caught JSONDecodeError: {err}')
+            except Exception as err:
+                log.info(f'recv_zmq_string caught Exception: {err}')
+            return message
+
+        except asyncio.exceptions.CancelledError:
+            log.debug('Simulton.recv_zmq_string() cancelled')
+        return ''
 
     def on_simulation_state_update(self, resp: SimulationResponse) -> None:
         log.debug(f'on_simulation_state_update {resp}')
@@ -232,14 +237,18 @@ class Simulton:
         # connection to parent
         from .fast_launcher import connection_to_parent  # noqa: PLC0415
 
-        if connection_to_parent is not None:
-            sys.stdout.flush()
-            sys.stderr.flush()
-            sys.stdout = sys.__stdout__
-            sys.stderr = sys.__stderr__
-            log.debug(f'Simulton.on_shutdown closing {connection_to_parent}')
+        if connection_to_parent is None:
+            return
+        sys.stdout.flush()
+        sys.stderr.flush()
+        sys.stdout = sys.__stdout__
+        sys.stderr = sys.__stderr__
+        log.debug(f'Simulton.on_shutdown closing {connection_to_parent}')
+        try:
             connection_to_parent.close()
-            connection_to_parent = None
+        except Exception as e:
+            log.info(f'Caught {type(e)}: {e}')
+        connection_to_parent = None
         return
 
     def get_new_instance_id(self) -> str:
@@ -298,7 +307,7 @@ class Simulton:
 
 
 #
-# the derivatives have to have these:
+# the derived class has to have these (see clock.py for an example):
 #
 # theDerivedSimulton Simulation | None = None # ClockSimulton()
 # let's try to delay instantiation to ensure that just importing the package
