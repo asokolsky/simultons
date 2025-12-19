@@ -3,19 +3,22 @@
 Simulton is:
 
 * a process
-* a zmq subscriber to Simulation publisher
 * a FastAPI REST service(s)
+* a zmq subscriber to Simulation publisher
 
-responsible for creating simulated objects of one class, e.g. clock or elevator
+Responsible for creating simulated objects of one class, e.g. clock or elevator
 class.  Such objects then can be interacted with using REST API.
 The latter is class specific.
 
-## Mandatory REST API
+## Mandatory REST API /api/v1/simulton
 
-`/api/v1/simulton`
+* GET -> [SimultonResponse](../simultons/schemas.py)
+* PUT, [SimultonRequest](../simultons/schemas.py) -> [SimultonResponse](../simultons/schemas.py)
 
-* shutdown
 
-## Custom REST API(s)
+## Custom REST API(s) e.g. /api/v1/clocks
 
-e.g. `/api/v1/clock`
+* GET -> [ClockResponse](../simultons/schemas.py)
+* POST [NewClockParams](../simultons/schemas.py) -> [ClockResponse](../simultons/schemas.py)
+* GET /api/v1/clocks/{id} -> [ClockResponse](../simultons/schemas.py)
+* DELETE /api/v1/clocks/{id} -> OK
