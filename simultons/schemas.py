@@ -22,6 +22,7 @@ class NewClockParams(BaseModel):
     """
 
     name: str
+    latency: float
 
 
 class ClockResponse(BaseModel):
@@ -83,6 +84,7 @@ class SimulationResponse(BaseModel):
 
     state: SimulationState
     rate: float
+    port: PositiveInt | None = None
 
 
 class SimultonState(StrEnum):
@@ -135,6 +137,7 @@ class SimultonResponse(BaseModel):
     """
 
     description: str
+    endpoint: str
     port: PositiveInt | None = None
     rate: float
     state: SimultonState

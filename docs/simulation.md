@@ -3,7 +3,7 @@
 Simulation is:
 
 * a process
-* a FastAPI service
+* a FastAPI REST service
 * a zmq publisher
 
 ## Simulation State
@@ -25,11 +25,11 @@ Simulation informs simultons about:
 
 ## REST service /api/v1/simulation
 
-* GET -> SimulationResponse
-* PUT, SimulationRequest -> SimulationResponse
+* GET -> [SimulationResponse](../simultons/schemas.py)
+* PUT, [SimulationRequest](../simultons/schemas.py) -> [SimulationResponse](../simultons/schemas.py)
 
 ## REST service /api/v1/simultons
 
-* GET -> dict[int port, SimultonResponse])
-* PORT NewSimultonParams -> SimultonResponse
-* GET '/api/v1/simultons/{id}' -> SimultonResponse
+* GET -> dict[int port, [SimultonResponse](../simultons/schemas.py)]
+* POST [NewSimultonParams](../simultons/schemas.py) -> [SimultonResponse](../simultons/schemas.py)
+* GET '/api/v1/simultons/{id}' -> [SimultonResponse](../simultons/schemas.py)

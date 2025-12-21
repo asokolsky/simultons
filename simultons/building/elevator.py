@@ -1,11 +1,13 @@
 """
-NewClockParams
-All the elevator-related stuff
+Some of the elevator-related stuff
 """
 
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from enum import auto
 from typing import Union
 
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi_utils.enums import StrEnum
 
@@ -15,6 +17,8 @@ from simultons import (
     SimultonRequest,
     SimultonResponse,
     Tags,
+    api_elevators,
+    api_simulton,
     get_random_id,
     setup_logging,
 )
@@ -94,7 +98,11 @@ class Elevator:
     _max_load = 700
 
     def __init__(
-        self, sim: Simulton | None, name: str, floors: int, current_floor: int = 0
+        self,
+        sim: Simulton | None,
+        name: str,
+        floors: int,
+        current_floor: int = 0,
     ) -> None:
         """
         Initializer
@@ -172,10 +180,13 @@ class Elevator:
             return LoadValue.SOME
         return LoadValue.NONE
 
-    def panel_callback(self, panel: ButtonWithLedPanel, leds_on: list[int]) -> None:  # noqa: ARG002
+    def panel_callback(
+        self, panel: ButtonWithLedPanel, leds_on: list[int]
+    ) -> None:
         """
         Handle button press here.
         """
+        log.debug(f'panel_callback {panel} {leds_on}')
         return
 
     def __repr__(self) -> str:
@@ -195,10 +206,12 @@ class Elevator:
         return
 
     def to_response(self) -> ElevatorResponse:
-        return ElevatorResponse(id=self._id, name=self._name, floors=self._floors)
+        return ElevatorResponse(
+            id=self._id, name=self._name, floors=self._floors
+        )
 
 
-class ElevatorSimulton(Simulton):
+class ElevatorsSimulton(Simulton):
     """
     Simulton for elevators
     """
@@ -215,49 +228,50 @@ class ElevatorSimulton(Simulton):
         return
 
 
-theElevatorSimulton: ElevatorSimulton | None = None  # noqa: N816
-app = ElevatorSimulton.create_app()
+theElevators: ElevatorsSimulton | None = None  # noqa: N816
 
 
-@app.on_event('startup')
-async def startup_event() -> None:
+@asynccontextmanager
+async def elevators_lifespan(_: FastAPI) -> AsyncGenerator:
+    """
+    Context manager for managing the application's lifespan events.
+    Code before 'yield' runs on startup.
+    Code after 'yield' runs on shutdown.
+    """
     log.debug('elevators startup_event')
-    global theElevatorSimulton
-    theElevatorSimulton = ElevatorSimulton()
-    theElevatorSimulton.on_startup()
+    global theElevators
+    theElevators = ElevatorsSimulton()
+    theElevators.on_startup()
+
+    yield  # The application starts receiving requests after this point
+
+    log.debug(f'elevators shutdown_event {theElevators}')
+    theElevators.on_shutdown()
+    theElevators = None
     return
 
 
-@app.on_event('shutdown')
-async def shutdown_event() -> None:
-    global theElevatorSimulton
-    log.debug(f'elevators shutdown_event {theElevatorSimulton}')
-    assert theElevatorSimulton is not None
-    theElevatorSimulton.on_shutdown()
-    theElevatorSimulton = None
-    return
+app = ElevatorsSimulton.create_app(elevators_lifespan)
 
 
-@app.get('/api/v1/simulton', response_model=SimultonResponse, tags=[Tags.simulton])
-async def get_simulton() -> SimultonResponse:
+@app.get(api_simulton, response_model=SimultonResponse, tags=[Tags.simulton])
+async def get_simulton(req: Request) -> SimultonResponse:
     log.debug('get elevator simulton')
-    # global theElevatorSimulton
-    assert theElevatorSimulton is not None
-    return theElevatorSimulton.to_response()
+    assert theElevators is not None
+    return theElevators.to_response(req.url.port)
 
 
-@app.put('/api/v1/simulton', tags=[Tags.simulton])
-async def put_simulton(req: SimultonRequest) -> JSONResponse:
+@app.put(api_simulton, tags=[Tags.simulton])
+async def put_simulton(req: SimultonRequest, request: Request) -> JSONResponse:
     """
     Handle a request to change the simulton state
     """
-    # global theElevatorSimulton
-    assert theElevatorSimulton is not None
-    return theElevatorSimulton.on_put_simulton(req)
+    assert theElevators is not None
+    return theElevators.on_put_simulton(req, request.url.port)
 
 
 @app.get(
-    '/api/v1/elevators/',
+    api_elevators,
     response_model=dict[str, ElevatorResponse],
     tags=[Tags.elevators],
 )
@@ -265,17 +279,17 @@ async def get_instances() -> dict:
     """
     Get all the elevators
     """
-    # global theElevatorSimulton
-    if theElevatorSimulton is None:
+    # global theElevators
+    if theElevators is None:
         return {}
     return {
         id: el.to_response().model_dump()
-        for id, el in theElevatorSimulton.instances.items()
+        for id, el in theElevators.instances.items()
     }
 
 
 @app.post(
-    '/api/v1/elevators/',
+    api_elevators,
     response_model=ElevatorResponse,
     status_code=201,
     tags=[Tags.elevators],
@@ -284,13 +298,13 @@ async def create_instance(params: NewElevatorParams) -> dict:
     """
     Handle new instance creation
     """
-    assert theElevatorSimulton is not None
-    el = Elevator(theElevatorSimulton, params.name, params.floors)
+    assert theElevators is not None
+    el = Elevator(theElevators, params.name, params.floors)
     return el.to_response().model_dump()
 
 
 @app.get(
-    '/api/v1/elevators/{id}',
+    api_elevators + '/{id}',
     response_model=ElevatorResponse,
     responses={404: {'model': Message}},
     tags=[Tags.elevators],
@@ -299,25 +313,27 @@ async def get_elevator(id: str) -> JSONResponse:
     """
     Get the specific elevator
     """
-    # global theElevatorSimulton
-    assert theElevatorSimulton is not None
+    # global theElevators
+    assert theElevators is not None
     try:
-        el = theElevatorSimulton.get_instance_by_id(id)
-        return JSONResponse(status_code=200, content=el.to_response().model_dump())
+        el = theElevators.get_instance_by_id(id)
+        return JSONResponse(
+            status_code=200, content=el.to_response().model_dump()
+        )
     except KeyError:
         pass
     content = Message('Item not found').model_dump()
     return JSONResponse(status_code=404, content=content)
 
 
-@app.delete('/api/v1/elevators/{id}', tags=[Tags.elevators])
+@app.delete(api_elevators + '/{id}', tags=[Tags.elevators])
 async def delete_elevator(id: str) -> JSONResponse:
     """
     Delete the elevator
     """
-    assert theElevatorSimulton is not None
+    assert theElevators is not None
     try:
-        theElevatorSimulton.del_instance_by_id(id)
+        theElevators.del_instance_by_id(id)
         return JSONResponse(status_code=200, content={})
     except KeyError:
         pass

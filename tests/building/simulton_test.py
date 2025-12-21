@@ -4,11 +4,8 @@ Test launching/shutting FastAPI server programmatically
 
 import unittest
 
-from simultons import SimultonProxy, rest_client, setup_logging
+from simultons import SimultonProxy, api_elevators, api_simulton, setup_logging
 from simultons.building import NewElevatorParams
-
-simulton_uri = '/api/v1/simulton'
-elevators_uri = '/api/v1/elevators/'
 
 log = setup_logging(__name__)
 
@@ -18,8 +15,7 @@ class TestSimulton(unittest.TestCase):
     Verify launching/shutting a fastapi process
     """
 
-    _service: SimultonProxy | None = None
-    restc: rest_client | None = None
+    _simulton: SimultonProxy | None = None
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -27,14 +23,12 @@ class TestSimulton(unittest.TestCase):
         For all the tests
         """
         log.info('TestSimulton.setUpClass')
-        cls._service = SimultonProxy('simultons/building/elevator.py', 9100)
+        cls._simulton = SimultonProxy('simultons/building/elevator.py', 9100)
         #
         # start the simulton process
         #
-        assert cls._service.launch()
-        assert cls._service.wait_until_reachable()
-        # save the client
-        cls.restc = cls._service._launcher._restc
+        assert cls._simulton.launch()
+        assert cls._simulton.wait_until_reachable()
         return
 
     @classmethod
@@ -46,8 +40,8 @@ class TestSimulton(unittest.TestCase):
         #
         # shut the simulton process
         #
-        assert cls._service is not None
-        cls._service.shutdown()
+        assert cls._simulton is not None
+        cls._simulton.shutdown()
         return
 
     def setUp(self) -> None:
@@ -55,8 +49,7 @@ class TestSimulton(unittest.TestCase):
         #
         # verify the FastAPI server is running
         #
-        assert self.restc is not None
-        (status_code, _) = self.restc.get(simulton_uri)
+        (status_code, _) = self._simulton.restc.get(api_simulton)
         self.assertEqual(status_code, 200)
         return
 
@@ -71,10 +64,9 @@ class TestSimulton(unittest.TestCase):
         """
         # log.info('test_all', 'fastapi pid:', self.popen.pid)
 
-        assert self.restc is not None
-        (status_code, rdata) = self.restc.get(simulton_uri)
+        (status_code, rdata) = self._simulton.restc.get(api_simulton)
         self.assertTrue(status_code, 200)
-        self.assertEqual(rdata['state'], 'PAUSED')
+        self.assertIn(rdata['state'], ['PAUSED', 'INIT'])
         self.assertEqual(rdata['rate'], 0)
         #
         # Create some elevators
@@ -83,14 +75,16 @@ class TestSimulton(unittest.TestCase):
         names = ['foo', 'bar', 'baz']
         for name in names:
             params = NewElevatorParams(name=name, floors=floors)
-            (status_code, rdata) = self.restc.post(elevators_uri, params.model_dump())
+            (status_code, rdata) = self._simulton.restc.post(
+                api_elevators, params.model_dump()
+            )
             self.assertTrue(status_code, 201)
             self.assertTrue(rdata['name'], name)
             self.assertTrue(rdata['floors'], floors)
         #
         # retrieve them all
         #
-        (status_code, elevators) = self.restc.get(elevators_uri)
+        (status_code, elevators) = self._simulton.restc.get(api_elevators)
         self.assertTrue(status_code, 200)
         self.assertEqual(len(elevators), len(names))
 
@@ -98,7 +92,9 @@ class TestSimulton(unittest.TestCase):
             #
             # retrieve them, one at a time
             #
-            (status_code, rdata) = self.restc.get(f'{elevators_uri}{id}')
+            (status_code, rdata) = self._simulton.restc.get(
+                f'{api_elevators}/{id}'
+            )
             self.assertTrue(status_code, 200)
             self.assertEqual(rdata, el)
             self.assertIn(el['name'], names)

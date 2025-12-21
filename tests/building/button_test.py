@@ -164,10 +164,14 @@ class TestButtonWithLedPanel(unittest.TestCase):
         self.assertEqual(self.panel.annotated_labels, self.labels)
         self.panel.click(2)
         self.assertEqual(self.panel.leds_on, [2])
-        self.assertEqual(self.panel.annotated_labels, ['1', '2', '*_3_*', '4', '5'])
+        self.assertEqual(
+            self.panel.annotated_labels, ['1', '2', '*_3_*', '4', '5']
+        )
         self.panel.click(4)
         self.assertEqual(self.panel.leds_on, [2, 4])
-        self.assertEqual(self.panel.annotated_labels, ['1', '2', '*_3_*', '4', '*_5_*'])
+        self.assertEqual(
+            self.panel.annotated_labels, ['1', '2', '*_3_*', '4', '*_5_*']
+        )
 
         self.panel._buttons[0].disable()
         self.panel._buttons[4].disable()
@@ -192,7 +196,9 @@ class TestButtonWithLedPanel(unittest.TestCase):
         #
         self.panel.click(4)
         self.assertEqual(self.panel.leds_on, [4])
-        self.assertEqual(self.panel.annotated_labels, ['1', '2', '3', '4', '*_5_*'])
+        self.assertEqual(
+            self.panel.annotated_labels, ['1', '2', '3', '4', '*_5_*']
+        )
 
         self.panel.click(2)
         self.assertEqual(self.panel.leds_on, [2, 4])

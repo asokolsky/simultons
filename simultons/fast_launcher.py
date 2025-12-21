@@ -2,12 +2,13 @@
 FastAPI process launcher
 """
 
-import contextlib
+import asyncio
 import os
 import signal
 import sys
 import time
 from collections import deque
+from contextlib import suppress
 from dataclasses import dataclass
 from multiprocessing import get_context
 from multiprocessing.connection import Connection
@@ -16,7 +17,7 @@ from typing import Any
 
 import uvicorn
 
-from . import rest_client, wait_until_reachable
+from . import async_rest_client, rest_client, wait_until_reachable
 from .logging import logging_config, setup_logging
 
 log = setup_logging(__name__)
@@ -61,7 +62,7 @@ class PipeWriter:
         self.conn = conn
 
     def write(self, text: Any) -> None:
-        with contextlib.suppress(OSError):
+        with suppress(OSError):
             self.conn.send(text)
 
     def flush(self) -> None:
@@ -99,7 +100,7 @@ def launch_uvicorn(conn: Connection, host: str, port: int, path: Path) -> None:
 
     assert path.exists()
     mod_data = get_module_data_from_path(path)
-    log.debug(f'get_module_data_from_path({path}) => {mod_data}')
+    # log.debug(f'get_module_data_from_path({path}) => {mod_data}')
     sys.path.insert(0, str(mod_data.extra_sys_path))
     # launch uvicorn app
     uvicorn.run(
@@ -147,7 +148,10 @@ class FastLauncher:
         #
         verbose = True
         dumpHeaders = False
-        self._restc: rest_client | None = self.get_rest_client(verbose, dumpHeaders)
+        self._arestc = async_rest_client(
+            self._host, self._port, verbose, dumpHeaders
+        )
+        self._restc = rest_client(self._host, self._port, verbose, dumpHeaders)
         return
 
     @property
@@ -159,6 +163,11 @@ class FastLauncher:
     def port(self) -> int:
         """Port accessor."""
         return self._port
+
+    @property
+    def url(self) -> str:
+        """URL accessor."""
+        return f'http://{self._host}:{self._port}'
 
     def launch(self) -> int:
         """
@@ -175,7 +184,9 @@ class FastLauncher:
         assert self._process.pid is not None
         return self._process.pid
 
-    def wait_until_reachable(self, health_uri: str, timeout: int = 20) -> dict | None:
+    def wait_until_reachable(
+        self, health_uri: str, timeout: int = 20
+    ) -> dict | None:
         """
         Give some room for the process to start.
         Returns a JSON produced by health_uri
@@ -187,7 +198,9 @@ class FastLauncher:
             log.error('Process is dead, cant wait')
 
         return wait_until_reachable(
-            f'http://{self._host}:{self._port}{health_uri}', self._process, timeout
+            f'http://{self._host}:{self._port}{health_uri}',
+            self._process,
+            timeout,
         )
 
     def wait_to_die(self, timeout: float = 0.5) -> bool:
@@ -199,7 +212,9 @@ class FastLauncher:
         #
         # wait for the process to actually terminate
         #
-        log.info(f'Waiting for upto {timeout} secs for {self._process.pid} to die...')
+        log.info(
+            f'Waiting for upto {timeout} secs for {self._process.pid} to die...'
+        )
         start = time.time()
         self._process.join(timeout)
         if self._process.exitcode is not None:
@@ -250,7 +265,11 @@ class FastLauncher:
         #
         # wait for the process to actually terminate
         #
-        res = self.wait_to_die(timeout) if self._process.exitcode is None else True
+        res = (
+            self.wait_to_die(timeout)
+            if self._process.exitcode is None
+            else True
+        )
         #
         # get the child's stdout and stderr
         #
@@ -267,13 +286,14 @@ class FastLauncher:
                     log.info(f'{line}')
             log.info(f'{dashes} {self._path} {self._process.pid} end {dashes}')
 
-        # close the socket
+        # close the sockets
         if self._restc is not None:
             self._restc.close()
             self._restc = None
+        if self._arestc is not None:
+            with suppress(RuntimeError):
+                asyncio.run(self._arestc.close())
+            self._arestc = None
         assert self._conn is not None
         self._conn.close()
         return res
-
-    def get_rest_client(self, verbose: bool, dumpHeaders: bool) -> rest_client:
-        return rest_client(self._host, self._port, verbose, dumpHeaders)

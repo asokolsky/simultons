@@ -16,6 +16,7 @@ import signal
 import string
 import sys
 from typing import Any
+from starlette.types import Lifespan, AppType
 
 import zmq
 import zmq.asyncio
@@ -63,6 +64,7 @@ class Simulton:
     title = 'FooBar'
     summary = 'FooBar summary'
     description = 'FooBar API'
+    endpoint = '/api/v1/foobar'
     version = module_version
 
     def __init__(self, name: str = '') -> None:
@@ -71,8 +73,9 @@ class Simulton:
         # from .logging import print_logging_tree
         # print_logging_tree()
 
-        self._state = SimultonState.INIT
+        self._port = 0
         self._rate: float = 0
+        self._state = SimultonState.INIT
         if not name:
             name = f'{type(self).__qualname__}@{hex(id(self))}'
         self._name = name
@@ -92,20 +95,25 @@ class Simulton:
         Background async task to receive zmq data
         """
         log.debug('Simulton.recv_zmq_string..')
-        res = await self._zsocket.recv_string()
-        log.debug(f'Simulton.recv_zmq_string() => {res}')
-        topic, message = res.split()
-        assert topic == simulation_ztopic
-        # dispatch message
         try:
-            self.on_simulation_state_update(
-                parse_obj_as(SimulationResponse, json.loads(message))
-            )
-        except json.JSONDecodeError as err:
-            log.info(f'recv_zmq_string caught JSONDecodeError: {err}')
-        except Exception as err:
-            log.info(f'recv_zmq_string caught Exception: {err}')
-        return message
+            res = await self._zsocket.recv_string()
+            log.debug(f'Simulton.recv_zmq_string() => {res}')
+            topic, message = res.split()
+            assert topic == simulation_ztopic
+            # dispatch message
+            try:
+                self.on_simulation_state_update(
+                    parse_obj_as(SimulationResponse, json.loads(message))
+                )
+            except json.JSONDecodeError as err:
+                log.info(f'recv_zmq_string caught JSONDecodeError: {err}')
+            except Exception as err:
+                log.info(f'recv_zmq_string caught Exception: {err}')
+            return message
+
+        except asyncio.exceptions.CancelledError:
+            log.debug('Simulton.recv_zmq_string() cancelled')
+        return ''
 
     def on_simulation_state_update(self, resp: SimulationResponse) -> None:
         log.debug(f'on_simulation_state_update {resp}')
@@ -200,7 +208,7 @@ class Simulton:
         log.debug(f'Simulton.on_shutting {self}')
         return
 
-    def on_startup(self) -> None:
+    async def on_startup(self) -> None:
         """
         Simulton FastAPI app startup event handler
         """
@@ -210,11 +218,10 @@ class Simulton:
         # To prevent keeping references to finished tasks forever,
         # make each task remove its own reference from the set after completion
         task.add_done_callback(self._bgtasks.discard)
-
         self.state = SimultonState.PAUSED
         return
 
-    def on_shutdown(self) -> None:
+    async def on_shutdown(self) -> None:
         """
         Simulton FastAPI app shutdown event handler
         """
@@ -231,14 +238,18 @@ class Simulton:
         # connection to parent
         from .fast_launcher import connection_to_parent  # noqa: PLC0415
 
-        if connection_to_parent is not None:
-            sys.stdout.flush()
-            sys.stderr.flush()
-            sys.stdout = sys.__stdout__
-            sys.stderr = sys.__stderr__
-            log.debug(f'Simulton.on_shutdown closing {connection_to_parent}')
+        if connection_to_parent is None:
+            return
+        sys.stdout.flush()
+        sys.stderr.flush()
+        sys.stdout = sys.__stdout__
+        sys.stderr = sys.__stderr__
+        log.debug(f'Simulton.on_shutdown closing {connection_to_parent}')
+        try:
             connection_to_parent.close()
-            connection_to_parent = None
+        except Exception as e:
+            log.info(f'Caught {type(e)}: {e}')
+        connection_to_parent = None
         return
 
     def get_new_instance_id(self) -> str:
@@ -259,25 +270,32 @@ class Simulton:
         return
 
     @classmethod
-    def create_app(cls) -> FastAPI:
+    def create_app(cls, lifespan: Lifespan[AppType]) -> FastAPI:
         log.debug(f'Creating a FastAPI app {cls.description}')
         return FastAPI(
             title=cls.title,
             summary=cls.summary,
             description=cls.description,
             version=cls.version,
+            lifespan=lifespan,
         )
 
-    def to_response(self) -> SimultonResponse:
+    def to_response(self, port: int) -> SimultonResponse:
+        if self._port == 0:
+            self._port = port
+        else:
+            assert self._port == port
         return SimultonResponse(
             description=self.description,
+            endpoint=self.endpoint,
+            port=self._port,
             rate=self.rate,
             state=self.state,
             title=self.title,
             version=self.version,
         )
 
-    def on_put_simulton(self, req: SimultonRequest) -> JSONResponse:
+    def on_put_simulton(self, req: SimultonRequest, port: int) -> JSONResponse:
         """
         Handle REST API PUT to change the simulton state
         """
@@ -290,48 +308,53 @@ class Simulton:
             background = None
         return JSONResponse(
             status_code=202,
-            content=self.to_response().model_dump(),
+            content=self.to_response(port).model_dump(),
             background=background,
         )
 
 
 #
-# the derivatives have to have these:
+# the derived class has to have these (see clock.py for an example):
 #
 # theDerivedSimulton Simulation | None = None # ClockSimulton()
 # let's try to delay instantiation to ensure that just importing the package
 # does NOT create network resources
 #
-# app = DerivedSimulton.create_app()
 
-# @app.on_event('startup')
-# async def startup_event():
+# @asynccontextmanager
+# async def derived_lifespan(_: FastAPI) -> AsyncGenerator:
+#     """
+#     Context manager for managing the application's lifespan events.
+#     Code before 'yield' runs on startup.
+#     Code after 'yield' runs on shutdown.
+#     """
+#     log.debug('derived simulton startup_event')
 #     global theDerivedSimulton
-#     log.debug(f'simulton startup_event {theDerivedSimulton}')
 #     theDerivedSimulton = DerivedSimulton()
-#     theDerivedSimulton.on_startup()
-#     return
-
-# @app.on_event('shutdown')
-# async def shutdown_event():
-#     global theDerivedSimulton
-#     log.debug(f'simulton shutdown_event {theDerivedSimulton}')
+#     await theDerivedSimulton.on_startup()
+#
+#     yield  # The application starts receiving requests after this point
+#
 #     assert theDerivedSimulton is not None
-#     theDerivedSimulton.on_shutdown()
+#     log.debug(f'simulton shutdown_event {theDerivedSimulton}')
+#     await theDerivedSimulton.on_shutdown()
 #     theDerivedSimulton = None
 #     return
 
-# @app.get('/api/v1/simulton', response_model=SimultonResponse)
-# async def get_simulton():
+# app = DerivedSimulton.create_app(derived_lifespan)
+
+# @app.get(api_simulton, response_model=SimultonResponse)
+# async def get_simulton(req: Request) -> SimultonResponse:
 #    '''
 #    Get the simulton - state and all
 #    '''
-#    return theDerivedSimulton.to_response()
+#    assert theDerivedSimulton is not None
+#    return theDerivedSimulton.to_response(req.url.port)
 
-# @app.put('/api/v1/simulton')
-# async def put_simulton(params: SimultonRequest):
+# @app.put(api_simulton)
+# async def put_simulton(params: SimultonRequest, request: Request):
 #    '''
 #    Handle a request to change the simulton state
 #    '''
-#    assert theDerivedSimulton.rate is not None
-#    return theDerivedSimulton.on_put_simulton(req)
+#    assert theDerivedSimulton is not None
+#    return theDerivedSimulton.on_put_simulton(params, request.url.port)

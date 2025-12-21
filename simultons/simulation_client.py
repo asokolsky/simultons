@@ -13,6 +13,10 @@ from simultons import (
     NewSimultonParams,
     SimulationRequest,
     SimulationState,
+    SimultonResponse,
+    api_simulation,
+    api_simultons,
+    async_rest_client,
     load_settings,
     rest_client,
     setup_logging,
@@ -26,16 +30,30 @@ class SimulationClient:
     Python client to talk to the simulation using REST API.
     """
 
-    api_uri = '/api/v1/simulation'
-    simultons_uri = '/api/v1/simultons'
-
     def __init__(self, fname: str = 'settings.yaml') -> None:
         log.debug(f'SimulationClient: {fname}')
-        self._service: FastLauncher | None = None
-        self._restc: rest_client | None = None
+        self._launcher: FastLauncher | None = None
         self._settings = load_settings(fname)
         log.debug(f'SimulationClient: {self._settings}')
         return
+
+    @property
+    def url(self) -> str:
+        """
+        URL of the simulation service.
+        """
+        assert self._launcher is not None
+        return self._launcher.url
+
+    @property
+    def restc(self) -> rest_client:
+        assert self._launcher is not None
+        return self._launcher._restc
+
+    @property
+    def arestc(self) -> async_rest_client:
+        assert self._launcher is not None
+        return self._launcher._arestc
 
     def set_up(self) -> bool:
         """
@@ -50,19 +68,14 @@ class SimulationClient:
         assert isinstance(sim_settings, dict)
         port = sim_settings['port']
         source = sim_settings['source']
-        self._service = FastLauncher(source, port)
-        pid = self._service.launch()
+        self._launcher = FastLauncher(source, port)
+        pid = self._launcher.launch()
         log.debug(f'FastLauncher({source}, {port}).launch() => {pid}')
-        res = self._service.wait_until_reachable(self.api_uri)
-        log.debug(f'wait_until_reachable({self.api_uri}) => {res}')
-        expected = {'state': 'PAUSED', 'rate': 0.0}
-        assert res == expected
-        #
-        # create simulation REST client
-        #
-        verbose = True
-        dumpHeaders = False
-        self._restc = self._service.get_rest_client(verbose, dumpHeaders)
+        res = self._launcher.wait_until_reachable(api_simulation)
+        log.debug(f'wait_until_reachable({api_simulation}) => {res}')
+        assert res['state'] == 'PAUSED'
+        assert res['rate'] == 0.0
+        assert res['port']
         return True
 
     def tear_down(self) -> None:
@@ -70,15 +83,13 @@ class SimulationClient:
         Request simulation process shutdown.
         """
         log.debug('tear_down')
-        if self._service is not None:
+        if self._launcher is not None:
             req = SimulationRequest(state=SimulationState.SHUTTING)
             if self.put_simulation(req) is not None:
                 time.sleep(0.01)
-                self._service.wait_to_die(5)
-            self._service.shutdown(timeout=3)
-            self._service = None
-        # self.restc.close()
-        self._restc = None
+                self._launcher.wait_to_die(5)
+            self._launcher.shutdown(timeout=3)
+            self._launcher = None
         return
 
     def __enter__(self) -> 'SimulationClient':
@@ -105,11 +116,11 @@ class SimulationClient:
         return
 
     def get_simulation(self) -> dict | None:
-        if self._restc is None:
-            log.info('get_simulation failed - _restc is None')
-            return None
+        """
+        Issue an HTTP GET to the simulation
+        """
         try:
-            (status_code, rdata) = self._restc.get(self.api_uri)
+            (status_code, rdata) = self.restc.get(api_simulation)
             assert status_code == 200
             assert isinstance(rdata, dict)
             return rdata
@@ -123,12 +134,9 @@ class SimulationClient:
         """
         Request simulation state change
         """
-        if self._restc is None:
-            log.info('put_simulation failed - _restc is None')
-            return None
-        assert self._service is not None
+        assert self._launcher is not None
         try:
-            (_, rdata) = self._restc.put(self.api_uri, req.model_dump())
+            (_, rdata) = self.restc.put(api_simulation, req.model_dump())
             assert isinstance(rdata, dict)
             return rdata
         except httpx.ConnectError as err:
@@ -137,40 +145,45 @@ class SimulationClient:
             log.info(f'Caught in SimulationClient.put_simulation: {err}')
         return None
 
-    def post_simulton(self, params: NewSimultonParams) -> dict | None:
+    def post_simulton(
+        self, params: NewSimultonParams
+    ) -> SimultonResponse | None:
         """
-        Request creation of new simulton
+        Request creation of new simulton.
+        Optionally wait until it is available.
         """
-        if self._restc is None:
-            log.info('post_simulton failed - _restc is None')
-            return None
-        (status_code, rdata) = self._restc.post(self.simultons_uri, params.model_dump())
+        (status_code, rdata) = self.restc.post(
+            api_simultons, params.model_dump()
+        )
         assert status_code == 201
+        # rdata looks like
+        # {
+        #     'description': '',
+        #     'port': 9500,
+        #     'rate': 0.0,
+        #     'state': 'INIT',
+        #     'title': '',
+        #     'version': ''
+        # }
         assert isinstance(rdata, dict)
         return rdata
 
-    def get_simultons(self) -> dict | None:
+    def get_simultons(self) -> dict[int, SimultonResponse] | None:
         """
         Request a list of simultons
         """
-        if self._restc is None:
-            log.info('get_simultons failed - _restc is None')
-            return None
-        (status_code, rdata) = self._restc.get(self.simultons_uri)
+        (status_code, rdata) = self.restc.get(api_simultons)
         assert status_code == 200
         assert isinstance(rdata, dict)
         return rdata
 
-    def get_simulton(self, id: Any) -> dict | None:
+    def get_simulton(self, id: Any) -> SimultonResponse | None:
         """
         Request a list of simultons
         """
-        if self._restc is None:
-            log.info(f'get_simulton({id}) failed - _restc is None')
-        else:
-            (status_code, rdata) = self._restc.get(f'{self.simultons_uri}/{id}')
-            if status_code == 200:
-                assert isinstance(rdata, dict)
-                return rdata
-            log.info(f'get_simulton({id}) failed - {status_code}')
+        (status_code, rdata) = self.restc.get(f'{api_simultons}/{id}')
+        if status_code == 200:
+            assert isinstance(rdata, dict)
+            return rdata
+        log.info(f'get_simulton({id}) failed - {status_code}')
         return None

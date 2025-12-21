@@ -58,7 +58,9 @@ class TestElevatorSimultonWithTestClient(unittest.TestCase):
             #
             for id, el in jresp.items():
                 response = client.get(f'{elevators_uri}{id}')
-                expected = ElevatorResponse(id=id, name=el['name'], floors=floors)
+                expected = ElevatorResponse(
+                    id=id, name=el['name'], floors=floors
+                )
                 log.info(f'received: {response.json()}')
                 log.info(f'expected: {expected.model_dump()}')
                 self.assertEqual(response.json(), expected.model_dump())

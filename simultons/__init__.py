@@ -6,7 +6,16 @@ Playing with FastAPI, pydantic while simulating stuff
 from .logging import setup_logging, print_logging_tree
 from .arestc import async_rest_client
 from .restc import rest_client
-from .globals import simulation_zspec, simulation_ztopic, module_version
+from .globals import (
+    simulation_zspec,
+    simulation_ztopic,
+    module_version,
+    api_simulation,
+    api_simultons,
+    api_simulton,
+    api_clocks,
+    api_elevators,
+)
 from .schemas import (
     NewClockParams,
     ClockResponse,
@@ -22,13 +31,16 @@ from .schemas import (
 )
 from .settings import load_settings
 from .wait import wait_until_reachable
+from .process_session import ProcessSession
 
 # order is important to avoid circular dependency!
 from .fast_launcher import FastLauncher
 from .simulton import get_random_id, Simulton, shut_the_process
-from .clock import Clock
-from .simulation import Simulation, SimultonProxy, theSimulation
+from .simulton_proxy import SimultonProxy
+from .simulton_client import SimultonClient
+from .simulation import Simulation, theSimulation
 from .simulation_client import SimulationClient
+from .clock import Clock
 
 __version__ = module_version
 
@@ -36,6 +48,11 @@ __all__ = [
     # globals.py
     'simulation_ztopic',
     'simulation_zspec',
+    'api_simulation',
+    'api_simultons',
+    'api_simulton',
+    'api_clocks',
+    'api_elevators',
     # arestc.py
     'async_rest_client',
     # clock.py
@@ -44,6 +61,8 @@ __all__ = [
     'FastLauncher',
     # elevator_simulton.py
     'app',
+    # process_session.py
+    'ProcessSession',
     # restc.py
     'rest_client',
     'wait_until_reachable',
@@ -75,6 +94,8 @@ __all__ = [
     'load_settings',
     # simulation_client.py
     'SimulationClient',
+    # simulton_client.py
+    'SimultonClient',
     # logging.py
     'setup_logging',
     'print_logging_tree',

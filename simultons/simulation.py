@@ -1,25 +1,26 @@
 """
-Simulation launcher which in turn launches all the simultons
+Simulation launches all the simultons
 """
 
-# ruff: noqa: I001
-from fastapi import FastAPI
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.background import BackgroundTask
 import zmq
 import zmq.asyncio
 
+# ruff: noqa: I001
 from .globals import simulation_zspec, simulation_ztopic, module_version
 
 from . import (
-    FastLauncher,
+    api_simulation,
+    api_simultons,
     SimulationState,
     SimulationRequest,
     SimulationResponse,
-    SimultonState,
-    Simulton,
     NewSimultonParams,
-    SimultonRequest,
+    SimultonProxy,
     SimultonResponse,
     Tags,
     Message,
@@ -29,108 +30,6 @@ from . import (
 )
 
 log = setup_logging(__name__)
-
-
-class SimultonProxy(Simulton):
-    """
-    Simulation idea of simulton(s).
-    This class is used by the simulation to talk to the simultons.
-    """
-
-    simulton_uri = '/api/v1/simulton'
-
-    def __init__(self, source_path: str, port: int) -> None:
-        super().__init__()
-        self._launcher = FastLauncher(source_path, port)
-        self.title = ''
-        self.description = ''
-        self.version = ''
-        return
-
-    def to_response(self) -> SimultonResponse:
-        return SimultonResponse(
-            description=self.description,
-            port=self.port,
-            rate=self.rate,
-            state=self.state,
-            title=self.title,
-            version=self.version,
-        )
-
-    @property
-    def port(self) -> int:
-        """Port accessor"""
-        return self._launcher.port
-
-    def launch(self) -> int:
-        """
-        Launch the simulton process
-        """
-        log.debug(f'SimultonProxy.launch({self})')
-        return self._launcher.launch()
-
-    def wait_until_reachable(self, timeout: int = 20) -> bool:
-        log.debug(f'SimultonProxy.wait_until_reachable({self.simulton_uri})')
-        jresp = self._launcher.wait_until_reachable(self.simulton_uri, timeout)
-        log.debug(f'SimultonProxy.wait_until_reachable({self.simulton_uri}) => {jresp}')
-        assert isinstance(jresp, dict)
-        self.description = jresp['description']
-        self.rate = jresp['rate']
-        self.title = jresp['title']
-        self.version = jresp['version']
-        self.state = jresp['state']
-        return True
-
-    def pause(self) -> bool:
-        """
-        Send a request to the simulton to move to the PAUSED state
-        """
-        log.debug('SimultonProxy.pause()')
-        if self._launcher._restc is None:
-            return False
-        params = SimultonRequest(state=SimultonState.PAUSED)
-        (status_code, _) = self._launcher._restc.put(
-            self.simulton_uri, params.model_dump()
-        )
-        return status_code == 202
-
-    def run(self, rate: float = 1.0) -> bool:
-        """
-        Send a request to the simulton to move to the RUNNING state
-        """
-        log.debug(f'SimultonProxy.run({rate})')
-        if self._launcher._restc is None:
-            return False
-        params = SimultonRequest(state=SimultonState.RUNNING, rate=rate)
-        (status_code, _) = self._launcher._restc.put(
-            self.simulton_uri, params.model_dump()
-        )
-        return status_code == 202
-
-    def shutting(self) -> bool:
-        """
-        Send a request to the simulton to move to the SHUTTING state
-        """
-        log.debug('SimultonProxy.shutting')
-        if self._launcher._restc is None:
-            return False
-        params = SimultonRequest(state=SimultonState.SHUTTING)
-        (status_code, _) = self._launcher._restc.put(
-            self.simulton_uri, params.model_dump()
-        )
-        return status_code == 202
-
-    def shutdown(self) -> None:
-        """
-        Forcefully shut the simulton process
-        """
-        log.debug('SimultonProxy.shutdown')
-        self._launcher.shutdown(timeout=1)
-        return
-
-    def wait_to_die(self, timeout: float = 0.5) -> bool:
-        log.debug(f'SimultonProxy.wait_to_die({timeout})')
-        return self._launcher.wait_to_die(timeout=timeout)
 
 
 class Simulation:
@@ -149,6 +48,7 @@ class Simulation:
         global log
         log = setup_logging(__name__)
         # init members
+        self._port = 0
         self._state = SimulationState.INIT
         # start in paused
         self._rate = 0.0
@@ -157,6 +57,8 @@ class Simulation:
         self._zsocket = self._zcontext.socket(zmq.PUB)
         self._zsocket.bind(self._zspec)
         # simulton accumulator
+        # NOTE: do NOT use _simultons to iterate and communicate with simultons
+        # instead use _zsocket to broadcast the update to all the simultons
         self._simultons: dict[int, SimultonProxy] = {}
         settings = load_settings()
         log.debug(f'settings: {settings}')
@@ -165,6 +67,17 @@ class Simulation:
         assert isinstance(sim_settings, dict)
         self._next_simulton_port = sim_settings['first_simulton_port']
         return
+
+    def to_response(self, port: int) -> SimulationResponse:
+        if self._port == 0:
+            self._port = port
+        else:
+            assert self._port == port
+        return SimulationResponse(
+            state=theSimulation.state,
+            rate=theSimulation.rate,
+            port=port,
+        )
 
     async def broadcast_state_update(self) -> None:
         """
@@ -189,15 +102,8 @@ class Simulation:
         log.debug(f'Simulation state {self._state} -> {state}')
         # update the state first
         self._state = state
-        await self.broadcast_state_update()
-        if state == SimulationState.RUNNING:
-            self.on_running()
-        elif state == SimulationState.PAUSED:
-            self.on_paused()
-        elif state == SimulationState.SHUTTING:
-            self.on_shutting()
-        else:
-            assert False
+        # await self.broadcast_state_update()
+        self.broadcast_state_update()
         return state
 
     @property
@@ -227,29 +133,6 @@ class Simulation:
             f'<{type(self).__qualname__} is {self._state}'
             f' at {self._rate} at {hex(id(self))}>'
         )
-
-    def on_running(self) -> None:
-        """
-        State just transitioned to RUNNING
-        """
-        log.debug('Simulation.on_running')
-        for s in self._simultons.values():
-            s.run(self._rate)
-        return
-
-    def on_paused(self) -> None:
-        """
-        State just transitioned to PAUSED
-        """
-        log.debug('Simulation.on_paused')
-        return
-
-    def on_shutting(self) -> None:
-        """
-        Simulation state just transitioned to SHUTTING
-        """
-        log.debug(f'Simulation.on_shutting {self}')
-        return
 
     async def on_startup(self) -> None:
         """
@@ -289,13 +172,30 @@ class Simulation:
         simulton.wait_until_reachable(2)
         return simulton.to_response()
 
-    def to_response(self) -> SimulationResponse:
-        return SimulationResponse(state=self.state, rate=self.rate)
-
 
 theSimulation: Simulation | None = None  # Simulation()  # noqa: N816
 # let's try to delay the instantiation to ensure that just importing the
 # package does NOT create network resources
+
+
+@asynccontextmanager
+async def simulation_lifespan(_: FastAPI) -> AsyncGenerator:
+    """
+    Context manager for managing the application's lifespan events.
+    Code before 'yield' runs on startup.
+    Code after 'yield' runs on shutdown.
+    """
+    log.debug('simulation startup_event')
+    global theSimulation
+    theSimulation = Simulation()
+    await theSimulation.on_startup()
+
+    yield  # The application starts receiving requests after this point
+
+    log.debug('simulation shutdown_event')
+    await theSimulation.on_shutdown()
+    theSimulation = None
+    return
 
 
 """
@@ -316,43 +216,23 @@ Can be used to manipulate the state of the simulation
 Can be used to create new simultons, destroy them, etc.
 """,
     version=module_version,
+    lifespan=simulation_lifespan,
 )
-
-
-@app.on_event('startup')
-async def startup_event() -> None:
-    log.debug('simulation startup_event')
-    global theSimulation
-    theSimulation = Simulation()
-    await theSimulation.on_startup()
-    return
-
-
-@app.on_event('shutdown')
-async def shutdown_event() -> None:
-    log.debug('simulation shutdown_event')
-    global theSimulation
-    assert theSimulation is not None
-    await theSimulation.on_shutdown()
-    theSimulation = None
-    return
 
 
 @app.get(
-    '/api/v1/simulation', response_model=SimulationResponse, tags=[Tags.simulation]
+    api_simulation, response_model=SimulationResponse, tags=[Tags.simulation]
 )
-async def get_simulation() -> dict:
+async def get_simulation(req: Request) -> dict:
     """
     Get the simulation state
     """
     assert theSimulation is not None
-    return SimulationResponse(
-        state=theSimulation.state, rate=theSimulation.rate
-    ).model_dump()
+    return theSimulation.to_response(req.url.port)
 
 
 @app.put(
-    '/api/v1/simulation',
+    api_simulation,
     response_model=SimulationResponse,
     status_code=202,
     responses={400: {'model': Message}},
@@ -378,13 +258,15 @@ async def put_simulation(req: SimulationRequest) -> JSONResponse:
 
 
 @app.post(
-    '/api/v1/simultons',
+    api_simultons,
     response_model=SimultonResponse,
     status_code=201,
     responses={400: {'model': Message}},
     tags=[Tags.simultons],
 )
-async def create_simulton(params: NewSimultonParams) -> SimultonResponse | JSONResponse:
+async def create_simulton(
+    params: NewSimultonParams,
+) -> SimultonResponse | JSONResponse:
     """
     Handle new simulton creation
     """
@@ -397,32 +279,35 @@ async def create_simulton(params: NewSimultonParams) -> SimultonResponse | JSONR
 
 
 @app.get(
-    '/api/v1/simultons',
+    api_simultons,
     response_model=dict[int, SimultonResponse],
     tags=[Tags.simultons],
 )
 async def get_simultons() -> dict:
     """
-    Get the simulation rate
+    Get all the simultons
     """
     assert theSimulation is not None
-    return {port: s.to_response() for port, s in theSimulation._simultons.items()}
+    # NOTE: this does NOT involve talking to simultons
+    return {
+        port: s.to_response() for port, s in theSimulation._simultons.items()
+    }
 
 
 @app.get(
-    '/api/v1/simultons/{id}',
+    api_simultons + '/{id}',
     response_model=SimultonResponse,
     responses={404: {'model': Message}},
     tags=[Tags.simultons],
 )
 async def get_simulton(id: int) -> SimultonResponse | JSONResponse:
     """
-    Get the simulation rate
+    Get the simulation
     """
     assert theSimulation is not None
     try:
-        sim = theSimulation._simultons[id]
+        return theSimulation._simultons[id].to_response()
     except IndexError:
-        content = Message('Item not found').model_dump()
-        return JSONResponse(status_code=404, content=content)
-    return sim.to_response()
+        pass
+    content = Message('Item not found').model_dump()
+    return JSONResponse(status_code=404, content=content)
