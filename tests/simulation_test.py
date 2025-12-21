@@ -213,8 +213,9 @@ class TestSimulation(unittest.TestCase):
 
         assert self._client is not None
         rdata = self._client.get_simulation()
-        expected = {'state': 'PAUSED', 'rate': 0}
-        self.assertEqual(rdata, expected)
+        self.assertEqual(rdata['state'], 'PAUSED')
+        self.assertEqual(rdata['rate'], 0)
+        self.assertTrue(rdata['port'])
 
         rdata = self._client.get_simultons()
         expected = {}

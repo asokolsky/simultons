@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from enum import auto
 from typing import Union
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi_utils.enums import StrEnum
 
@@ -255,19 +255,19 @@ app = ElevatorsSimulton.create_app(elevators_lifespan)
 
 
 @app.get(api_simulton, response_model=SimultonResponse, tags=[Tags.simulton])
-async def get_simulton() -> SimultonResponse:
+async def get_simulton(req: Request) -> SimultonResponse:
     log.debug('get elevator simulton')
     assert theElevators is not None
-    return theElevators.to_response()
+    return theElevators.to_response(req.url.port)
 
 
 @app.put(api_simulton, tags=[Tags.simulton])
-async def put_simulton(req: SimultonRequest) -> JSONResponse:
+async def put_simulton(req: SimultonRequest, request: Request) -> JSONResponse:
     """
     Handle a request to change the simulton state
     """
     assert theElevators is not None
-    return theElevators.on_put_simulton(req)
+    return theElevators.on_put_simulton(req, request.url.port)
 
 
 @app.get(

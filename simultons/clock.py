@@ -168,12 +168,12 @@ async def get_simulton(req: Request) -> SimultonResponse:
 
 
 @app.put(api_simulton, tags=[Tags.simulton])
-async def put_simulton(req: SimultonRequest) -> JSONResponse:
+async def put_simulton(req: SimultonRequest, request: Request) -> JSONResponse:
     """
     Handle a request to change the simulton state
     """
     assert theClocks is not None
-    return theClocks.on_put_simulton(req)
+    return theClocks.on_put_simulton(req, request.url.port)
 
 
 @app.get(

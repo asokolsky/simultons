@@ -296,7 +296,7 @@ class Simulton:
             version=self.version,
         )
 
-    def on_put_simulton(self, req: SimultonRequest) -> JSONResponse:
+    def on_put_simulton(self, req: SimultonRequest, port: int) -> JSONResponse:
         """
         Handle REST API PUT to change the simulton state
         """
@@ -309,7 +309,7 @@ class Simulton:
             background = None
         return JSONResponse(
             status_code=202,
-            content=self.to_response().model_dump(),
+            content=self.to_response(port).model_dump(),
             background=background,
         )
 
