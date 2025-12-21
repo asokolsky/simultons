@@ -31,6 +31,7 @@ from .schemas import (
 )
 from .settings import load_settings
 from .wait import wait_until_reachable
+from .process_session import ProcessSession
 
 # order is important to avoid circular dependency!
 from .fast_launcher import FastLauncher
@@ -60,6 +61,8 @@ __all__ = [
     'FastLauncher',
     # elevator_simulton.py
     'app',
+    # process_session.py
+    'ProcessSession',
     # restc.py
     'rest_client',
     'wait_until_reachable',
