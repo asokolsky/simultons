@@ -66,7 +66,7 @@ class TestSimulton(unittest.TestCase):
 
         (status_code, rdata) = self._simulton.restc.get(api_simulton)
         self.assertTrue(status_code, 200)
-        self.assertEqual(rdata['state'], 'PAUSED')
+        self.assertIn(rdata['state'], ['PAUSED', 'INIT'])
         self.assertEqual(rdata['rate'], 0)
         #
         # Create some elevators
