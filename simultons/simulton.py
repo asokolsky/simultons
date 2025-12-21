@@ -208,7 +208,7 @@ class Simulton:
         log.debug(f'Simulton.on_shutting {self}')
         return
 
-    def on_startup(self) -> None:
+    async def on_startup(self) -> None:
         """
         Simulton FastAPI app startup event handler
         """
@@ -218,11 +218,10 @@ class Simulton:
         # To prevent keeping references to finished tasks forever,
         # make each task remove its own reference from the set after completion
         task.add_done_callback(self._bgtasks.discard)
-
         self.state = SimultonState.PAUSED
         return
 
-    def on_shutdown(self) -> None:
+    async def on_shutdown(self) -> None:
         """
         Simulton FastAPI app shutdown event handler
         """
@@ -321,36 +320,41 @@ class Simulton:
 # let's try to delay instantiation to ensure that just importing the package
 # does NOT create network resources
 #
-# app = DerivedSimulton.create_app()
 
-# @app.on_event('startup')
-# async def startup_event():
+# @asynccontextmanager
+# async def derived_lifespan(_: FastAPI) -> AsyncGenerator:
+#     """
+#     Context manager for managing the application's lifespan events.
+#     Code before 'yield' runs on startup.
+#     Code after 'yield' runs on shutdown.
+#     """
+#     log.debug('derived simulton startup_event')
 #     global theDerivedSimulton
-#     log.debug(f'simulton startup_event {theDerivedSimulton}')
 #     theDerivedSimulton = DerivedSimulton()
-#     theDerivedSimulton.on_startup()
-#     return
-
-# @app.on_event('shutdown')
-# async def shutdown_event():
-#     global theDerivedSimulton
-#     log.debug(f'simulton shutdown_event {theDerivedSimulton}')
+#     await theDerivedSimulton.on_startup()
+#
+#     yield  # The application starts receiving requests after this point
+#
 #     assert theDerivedSimulton is not None
-#     theDerivedSimulton.on_shutdown()
+#     log.debug(f'simulton shutdown_event {theDerivedSimulton}')
+#     await theDerivedSimulton.on_shutdown()
 #     theDerivedSimulton = None
 #     return
 
-# @app.get('/api/v1/simulton', response_model=SimultonResponse)
-# async def get_simulton():
+# app = DerivedSimulton.create_app(derived_lifespan)
+
+# @app.get(api_simulton, response_model=SimultonResponse)
+# async def get_simulton(req: Request) -> SimultonResponse:
 #    '''
 #    Get the simulton - state and all
 #    '''
-#    return theDerivedSimulton.to_response()
+#    assert theDerivedSimulton is not None
+#    return theDerivedSimulton.to_response(req.url.port)
 
-# @app.put('/api/v1/simulton')
-# async def put_simulton(params: SimultonRequest):
+# @app.put(api_simulton)
+# async def put_simulton(params: SimultonRequest, request: Request):
 #    '''
 #    Handle a request to change the simulton state
 #    '''
-#    assert theDerivedSimulton.rate is not None
-#    return theDerivedSimulton.on_put_simulton(req)
+#    assert theDerivedSimulton is not None
+#    return theDerivedSimulton.on_put_simulton(params, request.url.port)

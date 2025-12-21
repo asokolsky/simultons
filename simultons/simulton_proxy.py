@@ -96,7 +96,8 @@ class SimultonProxy(Simulton):
 
     def pause(self) -> bool:
         """
-        Send a request to the simulton to move to the PAUSED state
+        Send a blocking! request to the simulton to move to the PAUSED state.
+        For use in tests ONLY!
         """
         log.debug('SimultonProxy.pause()')
         params = SimultonRequest(state=SimultonState.PAUSED)
@@ -105,7 +106,8 @@ class SimultonProxy(Simulton):
 
     def run(self, rate: float = 1.0) -> bool:
         """
-        Send a request to the simulton to move to the RUNNING state
+        Send a blocking! request to the simulton to move to the RUNNING state.
+        For use in tests ONLY!
         """
         log.debug(f'SimultonProxy.run({rate})')
         params = SimultonRequest(state=SimultonState.RUNNING, rate=rate)
@@ -114,7 +116,8 @@ class SimultonProxy(Simulton):
 
     def shutting(self) -> bool:
         """
-        Send a request to the simulton to move to the SHUTTING state
+        Send a blocking! request to the simulton to move to the SHUTTING state.
+        For use in tests ONLY!
         """
         log.debug('SimultonProxy.shutting')
         params = SimultonRequest(state=SimultonState.SHUTTING)

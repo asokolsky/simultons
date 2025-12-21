@@ -2,6 +2,7 @@
 Clocks simulton
 """
 
+import asyncio
 import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -85,13 +86,14 @@ class Clock:
         assert self._last_start > 0
         return self._time + ((time.time() - self._last_start) * rate)
 
-    def to_response(self) -> ClockResponse:
+    async def to_response(self) -> ClockResponse:
         """
         Return ClockResponse presentation of this clock.
-        sleep self._latency seconds to simulate the network latency.
+        sleep self._latency seconds to simulate latency.
         """
         if self._latency != 0.0:
-            time.sleep(self._latency)
+            # time.sleep(self._latency)
+            await asyncio.sleep(self._latency)
         return ClockResponse(id=self._id, name=self._name, time=self.time)
 
 
@@ -146,12 +148,12 @@ async def clocks_lifespan(_: FastAPI) -> AsyncGenerator:
     log.debug('clocks simulton startup_event')
     global theClocks
     theClocks = ClocksSimulton()
-    theClocks.on_startup()
+    await theClocks.on_startup()
 
     yield  # The application starts receiving requests after this point
 
     log.debug(f'clocks simulton shutdown_event {theClocks}')
-    theClocks.on_shutdown()
+    await theClocks.on_shutdown()
     theClocks = None
     return
 
@@ -164,6 +166,7 @@ async def get_simulton(req: Request) -> SimultonResponse:
     log.debug('get clock simulton, port=%d', req.url.port)
     # global theClocks
     assert theClocks is not None
+    # no need to await - Simulton.to_response is NOT async
     return theClocks.to_response(req.url.port)
 
 
@@ -185,9 +188,15 @@ async def get_instances() -> dict:
     """
     if theClocks is None:
         return {}
+    ids = list(theClocks.instances.keys())
+    resps = [cl.to_response() for cl in theClocks.instances.values()]
+    # return {
+    #    id: (await cl.to_response()).model_dump()
+    #    for id, cl in theClocks.instances.items()
+    # }
     return {
-        id: cl.to_response().model_dump()
-        for id, cl in theClocks.instances.items()
+        id: resp.model_dump()
+        for id, resp in zip(ids, await asyncio.gather(*resps), strict=True)
     }
 
 
@@ -203,7 +212,7 @@ async def create_instance(params: NewClockParams) -> dict:
     """
     assert theClocks is not None
     cl = Clock(theClocks, params.name, params.latency)
-    return cl.to_response().model_dump()
+    return (await cl.to_response()).model_dump()
 
 
 @app.get(api_clocks + '/{id}', response_model=ClockResponse, tags=[Tags.clocks])
@@ -214,7 +223,7 @@ async def get_clock(id: str) -> dict | JSONResponse:
     assert theClocks is not None
     try:
         cl: Clock = theClocks.get_instance_by_id(id)
-        return cl.to_response().model_dump()
+        return (await cl.to_response()).model_dump()
     except KeyError:
         pass
     content = Message('Item not found').model_dump()

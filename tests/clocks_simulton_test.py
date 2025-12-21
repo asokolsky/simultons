@@ -233,10 +233,16 @@ class TestClocksSimulton(unittest.TestCase):
         start = time.time()
         clocks = self.get_clocks()
         dt = time.time() - start
-        log.info(f'clocks: {clocks}, dt: {dt}')
-        self.assertTrue(
-            dt >= (fast_clocks * fast_latency) + (slow_clocks * slow_latency)
+        sequential_time = (fast_clocks * fast_latency) + (
+            slow_clocks * slow_latency
         )
+        log.info(
+            f'clocks: {clocks}, dt: {dt}, sequential_time: {sequential_time}'
+        )
+        #
+        # Verify the Clocks are being access in parallel, not sequentially!
+        #
+        self.assertLess(dt, sequential_time)
         #
         # now lets try to reach out to all the clocks in parallel
         #

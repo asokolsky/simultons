@@ -102,15 +102,8 @@ class Simulation:
         log.debug(f'Simulation state {self._state} -> {state}')
         # update the state first
         self._state = state
-        await self.broadcast_state_update()
-        if state == SimulationState.RUNNING:
-            self.on_running()
-        elif state == SimulationState.PAUSED:
-            self.on_paused()
-        elif state == SimulationState.SHUTTING:
-            self.on_shutting()
-        else:
-            assert False
+        # await self.broadcast_state_update()
+        self.broadcast_state_update()
         return state
 
     @property
@@ -140,29 +133,6 @@ class Simulation:
             f'<{type(self).__qualname__} is {self._state}'
             f' at {self._rate} at {hex(id(self))}>'
         )
-
-    def on_running(self) -> None:
-        """
-        State just transitioned to RUNNING
-        """
-        log.debug('Simulation.on_running')
-        for s in self._simultons.values():
-            s.run(self._rate)
-        return
-
-    def on_paused(self) -> None:
-        """
-        State just transitioned to PAUSED
-        """
-        log.debug('Simulation.on_paused')
-        return
-
-    def on_shutting(self) -> None:
-        """
-        Simulation state just transitioned to SHUTTING
-        """
-        log.debug(f'Simulation.on_shutting {self}')
-        return
 
     async def on_startup(self) -> None:
         """
@@ -315,7 +285,7 @@ async def create_simulton(
 )
 async def get_simultons() -> dict:
     """
-    Get the simulation rate
+    Get all the simultons
     """
     assert theSimulation is not None
     # NOTE: this does NOT involve talking to simultons
@@ -332,7 +302,7 @@ async def get_simultons() -> dict:
 )
 async def get_simulton(id: int) -> SimultonResponse | JSONResponse:
     """
-    Get the simulation rate
+    Get the simulation
     """
     assert theSimulation is not None
     try:
