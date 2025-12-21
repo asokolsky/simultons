@@ -18,7 +18,9 @@ class rest_client:
     REST client based on httpx
     """
 
-    def __init__(self, host: str, port: int, verbose: bool, dumpHeaders: bool) -> None:
+    def __init__(
+        self, host: str, port: int, verbose: bool, dumpHeaders: bool
+    ) -> None:
         """
         In: iface - server interface, or host name
             port - server port

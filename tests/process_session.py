@@ -151,7 +151,9 @@ class ProcessSession:
 
         except subprocess.TimeoutExpired:
             elapsed = time.time() - start
-            log.info(f'Waiting for {self.popen.pid} timed out after {elapsed:.3f} secs')
+            log.info(
+                f'Waiting for {self.popen.pid} timed out after {elapsed:.3f} secs'
+            )
         return False
 
     def is_alive(self) -> bool:

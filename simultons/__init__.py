@@ -36,6 +36,7 @@ from .wait import wait_until_reachable
 from .fast_launcher import FastLauncher
 from .simulton import get_random_id, Simulton, shut_the_process
 from .simulton_proxy import SimultonProxy
+from .simulton_client import SimultonClient
 from .simulation import Simulation, theSimulation
 from .simulation_client import SimulationClient
 from .clock import Clock
@@ -90,6 +91,8 @@ __all__ = [
     'load_settings',
     # simulation_client.py
     'SimulationClient',
+    # simulton_client.py
+    'SimultonClient',
     # logging.py
     'setup_logging',
     'print_logging_tree',

@@ -108,7 +108,8 @@ class TestCLI(unittest.TestCase):
         Feed the background CLI session one command at a time.
         """
 
-        with ProcessSession(['.venv/bin/python3', '-m', 'simultons']) as session:
+        cmd = ['.venv/bin/python3', '-m', 'simultons']
+        with ProcessSession(cmd) as session:
             cmd = 'set debug true'
             log.debug(f'cmd: {cmd}')
             while not session.wait(0.1):
@@ -159,7 +160,8 @@ class TestCLI(unittest.TestCase):
     def test_script(self) -> None:
         fname = new_commands_file(['set debug true', 'simulation_get', 'quit'])
         log.debug(f'fname: {fname}')
-        with ProcessSession(['.venv/bin/python3', '-m', 'simultons']) as session:
+        cmds = ['.venv/bin/python3', '-m', 'simultons']
+        with ProcessSession(cmds) as session:
             cmd = f'run_script {fname}'
             log.debug(f'cmd: {cmd}')
             while session.is_alive() and not session.wait(0.1):

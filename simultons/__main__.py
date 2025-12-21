@@ -145,8 +145,7 @@ def main() -> int:
     # print_logging_tree()
 
     with SimulationClient(args.settings) as client:
-        assert client._service is not None
-        url = f'http://{client._service.host}:{client._service.port}'
+        url = client.url
         intro = f"""
 Simulation API: {url}{api_simulation}
 Simultons API: {url}{api_simultons}

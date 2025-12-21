@@ -2,10 +2,13 @@
 Clocks simulton
 """
 
-# ruff: noqa: I001
 import time
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+# ruff: noqa: I001
 from . import (
     api_simulton,
     api_clocks,
@@ -131,34 +134,37 @@ class ClocksSimulton(Simulton):
 
 
 theClocks: ClocksSimulton | None = None  # noqa: N816
-app = ClocksSimulton.create_app()
 
 
-@app.on_event('startup')
-async def startup_event() -> None:
+@asynccontextmanager
+async def clocks_lifespan(_: FastAPI) -> AsyncGenerator:
+    """
+    Context manager for managing the application's lifespan events.
+    Code before 'yield' runs on startup.
+    Code after 'yield' runs on shutdown.
+    """
     log.debug('clocks simulton startup_event')
     global theClocks
     theClocks = ClocksSimulton()
     theClocks.on_startup()
-    return
 
+    yield  # The application starts receiving requests after this point
 
-@app.on_event('shutdown')
-async def shutdown_event() -> None:
-    global theClocks
     log.debug(f'clocks simulton shutdown_event {theClocks}')
-    assert theClocks is not None
     theClocks.on_shutdown()
     theClocks = None
     return
 
 
+app = ClocksSimulton.create_app(clocks_lifespan)
+
+
 @app.get(api_simulton, response_model=SimultonResponse, tags=[Tags.simulton])
-async def get_simulton() -> SimultonResponse:
-    log.debug('get clock simulton')
+async def get_simulton(req: Request) -> SimultonResponse:
+    log.debug('get clock simulton, port=%d', req.url.port)
     # global theClocks
     assert theClocks is not None
-    return theClocks.to_response()
+    return theClocks.to_response(req.url.port)
 
 
 @app.put(api_simulton, tags=[Tags.simulton])
@@ -170,17 +176,27 @@ async def put_simulton(req: SimultonRequest) -> JSONResponse:
     return theClocks.on_put_simulton(req)
 
 
-@app.get(api_clocks, response_model=dict[str, ClockResponse], tags=[Tags.clocks])
+@app.get(
+    api_clocks, response_model=dict[str, ClockResponse], tags=[Tags.clocks]
+)
 async def get_instances() -> dict:
     """
     Get all the instances
     """
     if theClocks is None:
         return {}
-    return {id: cl.to_response().model_dump() for id, cl in theClocks.instances.items()}
+    return {
+        id: cl.to_response().model_dump()
+        for id, cl in theClocks.instances.items()
+    }
 
 
-@app.post(api_clocks, response_model=ClockResponse, status_code=201, tags=[Tags.clocks])
+@app.post(
+    api_clocks,
+    response_model=ClockResponse,
+    status_code=201,
+    tags=[Tags.clocks],
+)
 async def create_instance(params: NewClockParams) -> dict:
     """
     Handle new instance creation

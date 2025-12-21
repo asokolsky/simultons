@@ -82,7 +82,9 @@ class SimultonProxy(Simulton):
         """
         log.debug(f'SimultonProxy.wait_until_reachable({api_simulton})')
         jresp = self._launcher.wait_until_reachable(api_simulton, timeout)
-        log.debug(f'SimultonProxy.wait_until_reachable({api_simulton}) => {jresp}')
+        log.debug(
+            f'SimultonProxy.wait_until_reachable({api_simulton}) => {jresp}'
+        )
         assert isinstance(jresp, dict)
         self.description = jresp['description']
         self.endpoint = jresp['endpoint']

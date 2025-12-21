@@ -2,13 +2,15 @@
 Simulation launches all the simultons
 """
 
-# ruff: noqa: I001
-from fastapi import FastAPI
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.background import BackgroundTask
 import zmq
 import zmq.asyncio
 
+# ruff: noqa: I001
 from .globals import simulation_zspec, simulation_ztopic, module_version
 
 from . import (
@@ -46,6 +48,7 @@ class Simulation:
         global log
         log = setup_logging(__name__)
         # init members
+        self._port = 0
         self._state = SimulationState.INIT
         # start in paused
         self._rate = 0.0
@@ -64,6 +67,17 @@ class Simulation:
         assert isinstance(sim_settings, dict)
         self._next_simulton_port = sim_settings['first_simulton_port']
         return
+
+    def to_response(self, port: int) -> SimulationResponse:
+        if self._port == 0:
+            self._port = port
+        else:
+            assert self._port == port
+        return SimulationResponse(
+            state=theSimulation.state,
+            rate=theSimulation.rate,
+            port=port,
+        )
 
     async def broadcast_state_update(self) -> None:
         """
@@ -188,13 +202,30 @@ class Simulation:
         simulton.wait_until_reachable(2)
         return simulton.to_response()
 
-    def to_response(self) -> SimulationResponse:
-        return SimulationResponse(state=self.state, rate=self.rate)
-
 
 theSimulation: Simulation | None = None  # Simulation()  # noqa: N816
 # let's try to delay the instantiation to ensure that just importing the
 # package does NOT create network resources
+
+
+@asynccontextmanager
+async def simulation_lifespan(_: FastAPI) -> AsyncGenerator:
+    """
+    Context manager for managing the application's lifespan events.
+    Code before 'yield' runs on startup.
+    Code after 'yield' runs on shutdown.
+    """
+    log.debug('simulation startup_event')
+    global theSimulation
+    theSimulation = Simulation()
+    await theSimulation.on_startup()
+
+    yield  # The application starts receiving requests after this point
+
+    log.debug('simulation shutdown_event')
+    await theSimulation.on_shutdown()
+    theSimulation = None
+    return
 
 
 """
@@ -215,37 +246,19 @@ Can be used to manipulate the state of the simulation
 Can be used to create new simultons, destroy them, etc.
 """,
     version=module_version,
+    lifespan=simulation_lifespan,
 )
 
 
-@app.on_event('startup')
-async def startup_event() -> None:
-    log.debug('simulation startup_event')
-    global theSimulation
-    theSimulation = Simulation()
-    await theSimulation.on_startup()
-    return
-
-
-@app.on_event('shutdown')
-async def shutdown_event() -> None:
-    log.debug('simulation shutdown_event')
-    global theSimulation
-    assert theSimulation is not None
-    await theSimulation.on_shutdown()
-    theSimulation = None
-    return
-
-
-@app.get(api_simulation, response_model=SimulationResponse, tags=[Tags.simulation])
-async def get_simulation() -> dict:
+@app.get(
+    api_simulation, response_model=SimulationResponse, tags=[Tags.simulation]
+)
+async def get_simulation(req: Request) -> dict:
     """
     Get the simulation state
     """
     assert theSimulation is not None
-    return SimulationResponse(
-        state=theSimulation.state, rate=theSimulation.rate
-    ).model_dump()
+    return theSimulation.to_response(req.url.port)
 
 
 @app.put(
@@ -281,7 +294,9 @@ async def put_simulation(req: SimulationRequest) -> JSONResponse:
     responses={400: {'model': Message}},
     tags=[Tags.simultons],
 )
-async def create_simulton(params: NewSimultonParams) -> SimultonResponse | JSONResponse:
+async def create_simulton(
+    params: NewSimultonParams,
+) -> SimultonResponse | JSONResponse:
     """
     Handle new simulton creation
     """
@@ -304,7 +319,9 @@ async def get_simultons() -> dict:
     """
     assert theSimulation is not None
     # NOTE: this does NOT involve talking to simultons
-    return {port: s.to_response() for port, s in theSimulation._simultons.items()}
+    return {
+        port: s.to_response() for port, s in theSimulation._simultons.items()
+    }
 
 
 @app.get(

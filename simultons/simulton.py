@@ -16,6 +16,7 @@ import signal
 import string
 import sys
 from typing import Any
+from starlette.types import Lifespan, AppType
 
 import zmq
 import zmq.asyncio
@@ -72,6 +73,7 @@ class Simulton:
         # from .logging import print_logging_tree
         # print_logging_tree()
 
+        self._port = 0
         self._rate: float = 0
         self._state = SimultonState.INIT
         if not name:
@@ -269,19 +271,25 @@ class Simulton:
         return
 
     @classmethod
-    def create_app(cls) -> FastAPI:
+    def create_app(cls, lifespan: Lifespan[AppType]) -> FastAPI:
         log.debug(f'Creating a FastAPI app {cls.description}')
         return FastAPI(
             title=cls.title,
             summary=cls.summary,
             description=cls.description,
             version=cls.version,
+            lifespan=lifespan,
         )
 
-    def to_response(self) -> SimultonResponse:
+    def to_response(self, port: int) -> SimultonResponse:
+        if self._port == 0:
+            self._port = port
+        else:
+            assert self._port == port
         return SimultonResponse(
             description=self.description,
             endpoint=self.endpoint,
+            port=self._port,
             rate=self.rate,
             state=self.state,
             title=self.title,

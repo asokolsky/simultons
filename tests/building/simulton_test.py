@@ -92,7 +92,9 @@ class TestSimulton(unittest.TestCase):
             #
             # retrieve them, one at a time
             #
-            (status_code, rdata) = self._simulton.restc.get(f'{api_elevators}/{id}')
+            (status_code, rdata) = self._simulton.restc.get(
+                f'{api_elevators}/{id}'
+            )
             self.assertTrue(status_code, 200)
             self.assertEqual(rdata, el)
             self.assertIn(el['name'], names)

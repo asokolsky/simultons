@@ -102,25 +102,33 @@ class TestClocksSimulton(unittest.TestCase):
 
     def del_clocks(self, clocks: dict[str, ClockResponse]) -> None:
         for clock_id in clocks:
-            (status_code, _) = self._simulton.restc.delete(f'{api_clocks}/{clock_id}')
+            (status_code, _) = self._simulton.restc.delete(
+                f'{api_clocks}/{clock_id}'
+            )
             self.assertEqual(status_code, 200)
         return
 
     def get_time(self, clock_id: str) -> ClockResponse:
-        (status_code, rdata) = self._simulton.restc.get(f'{api_clocks}/{clock_id}')
+        (status_code, rdata) = self._simulton.restc.get(
+            f'{api_clocks}/{clock_id}'
+        )
         self.assertEqual(status_code, 200)
         assert isinstance(rdata, dict)
         return rdata
 
     def get_nonexistent_clock(self) -> None:
-        (status_code, rdata) = self._simulton.restc.get(f'{api_clocks}/1234567890')
+        (status_code, rdata) = self._simulton.restc.get(
+            f'{api_clocks}/1234567890'
+        )
         self.assertEqual(status_code, 404)
         expected = {'message': 'Item not found'}
         self.assertEqual(expected, rdata)
         return
 
     def del_nonexistent_clock(self) -> None:
-        (status_code, rdata) = self._simulton.restc.delete(f'{api_clocks}/1234567890')
+        (status_code, rdata) = self._simulton.restc.delete(
+            f'{api_clocks}/1234567890'
+        )
         self.assertEqual(status_code, 404)
         expected = {'message': 'Item not found'}
         self.assertEqual(expected, rdata)
@@ -191,7 +199,9 @@ class TestClocksSimulton(unittest.TestCase):
         self.del_nonexistent_clock()
 
         # now delete clock theClockId
-        (status_code, rdata) = self._simulton.restc.delete(f'{api_clocks}/{theClockId}')
+        (status_code, rdata) = self._simulton.restc.delete(
+            f'{api_clocks}/{theClockId}'
+        )
         self.assertEqual(status_code, 200)
 
         self.get_nonexistent_clock()

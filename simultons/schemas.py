@@ -84,6 +84,7 @@ class SimulationResponse(BaseModel):
 
     state: SimulationState
     rate: float
+    port: PositiveInt | None = None
 
 
 class SimultonState(StrEnum):

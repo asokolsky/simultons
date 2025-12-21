@@ -62,7 +62,11 @@ logging_config = {
         'simultons': {'level': 'DEBUG'},
         'simultons.wait': {'level': 'INFO'},
         'tests': {'level': 'DEBUG', 'handlers': ['console'], 'propagate': 'no'},
-        'uvicorn': {'level': 'DEBUG', 'handlers': ['console'], 'propagate': 'no'},
+        'uvicorn': {
+            'level': 'DEBUG',
+            'handlers': ['console'],
+            'propagate': 'no',
+        },
         'werkzeug': {'level': 'DEBUG'},
     },
 }

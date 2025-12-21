@@ -2,9 +2,12 @@
 Some of the elevator-related stuff
 """
 
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from enum import auto
 from typing import Union
 
+from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi_utils.enums import StrEnum
 
@@ -95,7 +98,11 @@ class Elevator:
     _max_load = 700
 
     def __init__(
-        self, sim: Simulton | None, name: str, floors: int, current_floor: int = 0
+        self,
+        sim: Simulton | None,
+        name: str,
+        floors: int,
+        current_floor: int = 0,
     ) -> None:
         """
         Initializer
@@ -173,10 +180,13 @@ class Elevator:
             return LoadValue.SOME
         return LoadValue.NONE
 
-    def panel_callback(self, panel: ButtonWithLedPanel, leds_on: list[int]) -> None:  # noqa: ARG002
+    def panel_callback(
+        self, panel: ButtonWithLedPanel, leds_on: list[int]
+    ) -> None:
         """
         Handle button press here.
         """
+        log.debug(f'panel_callback {panel} {leds_on}')
         return
 
     def __repr__(self) -> str:
@@ -196,7 +206,9 @@ class Elevator:
         return
 
     def to_response(self) -> ElevatorResponse:
-        return ElevatorResponse(id=self._id, name=self._name, floors=self._floors)
+        return ElevatorResponse(
+            id=self._id, name=self._name, floors=self._floors
+        )
 
 
 class ElevatorsSimulton(Simulton):
@@ -217,26 +229,29 @@ class ElevatorsSimulton(Simulton):
 
 
 theElevators: ElevatorsSimulton | None = None  # noqa: N816
-app = ElevatorsSimulton.create_app()
 
 
-@app.on_event('startup')
-async def startup_event() -> None:
+@asynccontextmanager
+async def elevators_lifespan(_: FastAPI) -> AsyncGenerator:
+    """
+    Context manager for managing the application's lifespan events.
+    Code before 'yield' runs on startup.
+    Code after 'yield' runs on shutdown.
+    """
     log.debug('elevators startup_event')
     global theElevators
     theElevators = ElevatorsSimulton()
     theElevators.on_startup()
-    return
 
+    yield  # The application starts receiving requests after this point
 
-@app.on_event('shutdown')
-async def shutdown_event() -> None:
-    global theElevators
     log.debug(f'elevators shutdown_event {theElevators}')
-    assert theElevators is not None
     theElevators.on_shutdown()
     theElevators = None
     return
+
+
+app = ElevatorsSimulton.create_app(elevators_lifespan)
 
 
 @app.get(api_simulton, response_model=SimultonResponse, tags=[Tags.simulton])
@@ -268,7 +283,8 @@ async def get_instances() -> dict:
     if theElevators is None:
         return {}
     return {
-        id: el.to_response().model_dump() for id, el in theElevators.instances.items()
+        id: el.to_response().model_dump()
+        for id, el in theElevators.instances.items()
     }
 
 
@@ -301,7 +317,9 @@ async def get_elevator(id: str) -> JSONResponse:
     assert theElevators is not None
     try:
         el = theElevators.get_instance_by_id(id)
-        return JSONResponse(status_code=200, content=el.to_response().model_dump())
+        return JSONResponse(
+            status_code=200, content=el.to_response().model_dump()
+        )
     except KeyError:
         pass
     content = Message('Item not found').model_dump()
