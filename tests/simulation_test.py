@@ -53,7 +53,7 @@ class TestSimulation(unittest.TestCase):
         #
         # start the simulation process
         #
-        log.info('TestSimulation.setUp')
+        log.info('setUp')
         self._client = SimulationClient()
         self._client.set_up()
 
@@ -61,36 +61,28 @@ class TestSimulation(unittest.TestCase):
         return
 
     def tearDown(self) -> None:
-        log.info('TestSimulation.tearDown')
+        log.info('tearDown')
         if self._simulton_client is not None:
             self._simulton_client.close()
             self._simulton_client = None
         self._client.tear_down()
         return
 
-    def create_clocks(
-        self, sc: SimultonClient, num_clocks: int, latency: float
-    ) -> dict[str, ClockResponse]:
+    def create_clocks_simulton(self) -> SimultonClient:
         """
-        Create multiple clocks (in series) in a single singleton.
-        Returns dict[clockID, ClockResponse]
+        Create a new simulton for a collection of clocks
         """
-        res: dict[str, ClockResponse] = {}
-        for _ in range(num_clocks):
-            name = f'clock-{self.clock_num}'
-            params = NewClockParams(name=name, latency=latency)
-            self.clock_num += 1
-            (status_code, rdata) = sc.new_collection_item(params.model_dump())
-            self.assertEqual(status_code, 201)
-            id = rdata['id']
-            self.assertTrue(id)
-            self.assertEqual(rdata['name'], name)
-            time = rdata['time']
-            self.assertTrue(str(time))
-            res[id] = rdata
-        return res
+        param = NewSimultonParams(src_path='simultons/clock.py')
+        # note the wait=True here
+        assert self._client is not None
+        rdata = self._client.post_simulton(param)
+        self.assertIsInstance(rdata, dict)
 
-    def create_clock_simultons(
+        simulton_client = SimultonClient(rdata)
+        self.assertEqual(simulton_client._state, 'PAUSED')
+        return simulton_client
+
+    def create_clocks_simultons(
         self, num_simultons: int
     ) -> dict[str, SimultonResponse]:
         res: dict[str, SimultonResponse] = {}
@@ -115,6 +107,28 @@ class TestSimulation(unittest.TestCase):
             res[str(port)] = rdata
         return res
 
+    def create_clocks(
+        self, sc: SimultonClient, num_clocks: int, latency: float
+    ) -> dict[str, ClockResponse]:
+        """
+        Create multiple clocks (in series) in a single singleton.
+        Returns dict[clockID, ClockResponse]
+        """
+        res: dict[str, ClockResponse] = {}
+        for _ in range(num_clocks):
+            name = f'clock-{self.clock_num}'
+            params = NewClockParams(name=name, latency=latency)
+            self.clock_num += 1
+            (status_code, rdata) = sc.new_collection_item(params.model_dump())
+            self.assertEqual(status_code, 201)
+            id = rdata['id']
+            self.assertTrue(id)
+            self.assertEqual(rdata['name'], name)
+            time = rdata['time']
+            self.assertTrue(str(time))
+            res[id] = rdata
+        return res
+
     def test_minimal(self) -> None:
         """
         Minimum test of the simulation.
@@ -128,15 +142,12 @@ class TestSimulation(unittest.TestCase):
         self.assertEqual(rdata['rate'], 0)
         self.assertTrue(rdata['port'])
         #
-        # let's run simulation with no simultons now
+        # we are running simulation with no simultons!
         #
         rdata = self._client.get_simultons()
         log.info(f'self._client.get_simultons() => {rdata}')
         expected = {}
         self.assertEqual(rdata, expected)
-        #
-        # lets stop simulation
-        #
         return
 
     def test_minimal_one_simulton(self) -> None:
@@ -145,24 +156,10 @@ class TestSimulation(unittest.TestCase):
         python3 -m unittest -k test_minimal_one_simulton tests/simulation_test.py
         """
         log.info('test_minimal_one_simulton running')
-        assert self._client is not None
-
-        # create a simulton for a collection of clocks
-        param = NewSimultonParams(src_path='simultons/clock.py')
-        # note the wait=True here
-        rdata = self._client.post_simulton(param)
-        self.assertIsInstance(rdata, dict)
-
-        self._simulton_client = SimultonClient(rdata)
-        self.assertEqual(self._simulton_client._state, 'PAUSED')
-        rdata = self._simulton_client.get_simulton()
-        self.assertEqual(rdata['state'], 'PAUSED')
+        self._simulton_client = self.create_clocks_simulton()
         clocks = self._simulton_client.get_collection()
         log.info(f'clocks: {clocks}')
         self.assertEqual(clocks, {})
-        #
-        # lets stop simulation and the simulton
-        #
         return
 
     def test_one_simulton(self) -> None:
@@ -170,6 +167,8 @@ class TestSimulation(unittest.TestCase):
         Test creation of just one clocks simulton.
         python3 -m unittest -k test_one_simulton tests/simulation_test.py
         """
+        log.info('test_one_simulton running')
+
         assert self._client is not None
         rdata = self._client.get_simulation()
         self.assertEqual(rdata['state'], 'PAUSED')

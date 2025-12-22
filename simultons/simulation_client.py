@@ -2,7 +2,6 @@
 Simulation REST client in python
 """
 
-import time
 from types import TracebackType
 from typing import Any
 
