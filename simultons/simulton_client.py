@@ -58,7 +58,6 @@ class SimultonClient:
             with suppress(RuntimeError):
                 asyncio.run(self._arestc.close())
             self._arestc = None
-
         return
 
     @property

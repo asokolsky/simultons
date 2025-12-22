@@ -4,7 +4,7 @@ import time
 import unittest
 from pathlib import Path
 
-from simultons import __version__, ProcessSession, setup_logging
+from simultons import ProcessSession, __version__, setup_logging
 
 log = setup_logging(__name__)
 

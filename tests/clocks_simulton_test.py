@@ -39,6 +39,7 @@ class TestClocksSimulton(unittest.TestCase):
         # request the shutdown - compare this to
         assert cls._simulton is not None
         cls._simulton.shutting()
+        cls._simulton.close_sockets()
         #
         # wait for the process to actually terminate
         #

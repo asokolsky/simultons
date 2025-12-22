@@ -204,6 +204,7 @@ class FastLauncher:
         )
 
     def wait_to_die(self, timeout: float = 0.5) -> bool:
+        log.debug(f'wait_to_die({timeout}) for {self._process.pid}')
         if not self._process.is_alive():
             log.info(
                 f'Pid {self._process.pid} already terminated with ec: {self._process.exitcode}'
@@ -212,9 +213,6 @@ class FastLauncher:
         #
         # wait for the process to actually terminate
         #
-        log.info(
-            f'Waiting for upto {timeout} secs for {self._process.pid} to die...'
-        )
         start = time.time()
         self._process.join(timeout)
         if self._process.exitcode is not None:
@@ -244,14 +242,29 @@ class FastLauncher:
         log.debug(f'get_child_output in {len(d)} parts')
         return ''.join(d)
 
+    def close_sockets(self) -> None:
+        """
+        Close the sockets
+        """
+        if self._restc is not None:
+            self._restc.close()
+            self._restc = None
+        if self._arestc is not None:
+            log.debug('closing self._arestc')
+            with suppress(RuntimeError):
+                asyncio.run(self._arestc.close())
+            self._arestc = None
+        return
+
     def shutdown(self, timeout: float = 0.5) -> bool:
         """
         Stop the FastAPI service process
         """
         log.debug(f'shutdown({timeout})')
+        if self._restc is not None:
+            self.close_sockets()
 
         before = self.get_child_output()
-
         assert self._process is not None
         if self._process.exitcode is None:
             try:
@@ -261,7 +274,9 @@ class FastLauncher:
             except ProcessLookupError:
                 log.info(f'Failed to locate pid {self._process.pid}')
         else:
-            log.debug(f'FastAPI is already down, ec: {self._process.exitcode}')
+            log.debug(
+                f'{self._process.pid} already down, ec: {self._process.exitcode}'
+            )
         #
         # wait for the process to actually terminate
         #
@@ -285,15 +300,9 @@ class FastLauncher:
                 if line:
                     log.info(f'{line}')
             log.info(f'{dashes} {self._path} {self._process.pid} end {dashes}')
-
-        # close the sockets
-        if self._restc is not None:
-            self._restc.close()
-            self._restc = None
-        if self._arestc is not None:
-            with suppress(RuntimeError):
-                asyncio.run(self._arestc.close())
-            self._arestc = None
+        #
+        # close connection
+        #
         assert self._conn is not None
         self._conn.close()
         return res

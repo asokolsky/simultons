@@ -73,18 +73,16 @@ class SimultonProxy(Simulton):
         """
         Launch the simulton process
         """
-        log.debug(f'SimultonProxy.launch({self})')
+        log.debug(f'launch({self})')
         return self._launcher.launch()
 
     def wait_until_reachable(self, timeout: int = 20) -> bool:
         """
         Side-effect: sets the attributes
         """
-        log.debug(f'SimultonProxy.wait_until_reachable({api_simulton})')
+        log.debug(f'wait_until_reachable({api_simulton})')
         jresp = self._launcher.wait_until_reachable(api_simulton, timeout)
-        log.debug(
-            f'SimultonProxy.wait_until_reachable({api_simulton}) => {jresp}'
-        )
+        log.debug(f'wait_until_reachable({api_simulton}) => {jresp}')
         assert isinstance(jresp, dict)
         self.description = jresp['description']
         self.endpoint = jresp['endpoint']
@@ -99,7 +97,7 @@ class SimultonProxy(Simulton):
         Send a blocking! request to the simulton to move to the PAUSED state.
         For use in tests ONLY!
         """
-        log.debug('SimultonProxy.pause()')
+        log.debug('pause()')
         params = SimultonRequest(state=SimultonState.PAUSED)
         (status_code, _) = self.restc.put(api_simulton, params.model_dump())
         return status_code == 202
@@ -109,7 +107,7 @@ class SimultonProxy(Simulton):
         Send a blocking! request to the simulton to move to the RUNNING state.
         For use in tests ONLY!
         """
-        log.debug(f'SimultonProxy.run({rate})')
+        log.debug(f'run({rate})')
         params = SimultonRequest(state=SimultonState.RUNNING, rate=rate)
         (status_code, _) = self.restc.put(api_simulton, params.model_dump())
         return status_code == 202
@@ -119,7 +117,7 @@ class SimultonProxy(Simulton):
         Send a blocking! request to the simulton to move to the SHUTTING state.
         For use in tests ONLY!
         """
-        log.debug('SimultonProxy.shutting')
+        log.debug('shutting')
         params = SimultonRequest(state=SimultonState.SHUTTING)
         (status_code, _) = self.restc.put(api_simulton, params.model_dump())
         return status_code == 202
@@ -127,11 +125,18 @@ class SimultonProxy(Simulton):
     def shutdown(self) -> None:
         """
         Forcefully shut the simulton process
+        Compare to SimulationClient.tear_down
         """
-        log.debug('SimultonProxy.shutdown')
+        log.debug('shutdown')
+        self._launcher.wait_to_die(5)
         self._launcher.shutdown(timeout=1)
+        self._launcher = None
         return
 
     def wait_to_die(self, timeout: float = 0.5) -> bool:
-        log.debug(f'SimultonProxy.wait_to_die({timeout})')
+        log.debug(f'wait_to_die({timeout})')
         return self._launcher.wait_to_die(timeout=timeout)
+
+    def close_sockets(self) -> None:
+        self._launcher.close_sockets()
+        return

@@ -86,8 +86,11 @@ class SimulationClient:
         if self._launcher is not None:
             req = SimulationRequest(state=SimulationState.SHUTTING)
             if self.put_simulation(req) is not None:
-                time.sleep(0.01)
-                self._launcher.wait_to_die(5)
+                pass
+                #time.sleep(0.1)
+                #log.debug('tear_down2')
+                #self._launcher.wait_to_die(5)
+            self._launcher.close_sockets()
             self._launcher.shutdown(timeout=3)
             self._launcher = None
         return

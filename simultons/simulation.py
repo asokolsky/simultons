@@ -48,7 +48,7 @@ class Simulation:
         global log
         log = setup_logging(__name__)
         # init members
-        self._port = 0
+        self._port = 1
         self._state = SimulationState.INIT
         # start in paused
         self._rate = 0.0
@@ -68,24 +68,22 @@ class Simulation:
         self._next_simulton_port = sim_settings['first_simulton_port']
         return
 
-    def to_response(self, port: int) -> SimulationResponse:
-        if self._port == 0:
+    def to_response(self, port: int | None = None) -> SimulationResponse:
+        if port is None:
+            pass
+        elif self._port == 1:
             self._port = port
         else:
             assert self._port == port
         return SimulationResponse(
-            state=theSimulation.state,
-            rate=theSimulation.rate,
-            port=port,
+            state=self._state, rate=self._rate, port=self._port
         )
 
     async def broadcast_state_update(self) -> None:
         """
         Share the state update with the subscribers.
         """
-        message = SimulationResponse(
-            state=self._state, rate=self._rate
-        ).model_dump_json()
+        message = self.to_response().model_dump_json()
         assert self._zsocket is not None
         log.debug(f'Broadcasting state update: {message}')
         self._zsocket.send_string(f'{self._ztopic} {message}')
@@ -99,11 +97,11 @@ class Simulation:
     async def setState(self, state: SimulationState) -> SimulationState:  # noqa: N802
         if self._state == state:
             return state
-        log.debug(f'Simulation state {self._state} -> {state}')
+        log.debug(f'state {self._state} -> {state}')
         # update the state first
         self._state = state
-        # await self.broadcast_state_update()
-        self.broadcast_state_update()
+        await self.broadcast_state_update()
+        # self.broadcast_state_update()
         return state
 
     @property
@@ -138,7 +136,7 @@ class Simulation:
         """
         Simulation FastAPI startup event handler
         """
-        log.debug('Simulation.on_startup')
+        log.debug('on_startup')
         await self.setState(SimulationState.PAUSED)
         return
 
@@ -146,17 +144,27 @@ class Simulation:
         """
         Simulation FastAPI shutdown event handler
         """
-        log.debug(f'Simulation.on_shutdown {self}')
-        await self.setState(SimulationState.SHUTTING)
-        log.debug('Shutting the simultons')
+        log.debug(f'on_shutdown {self}')
+        #
+        # TODO: redo this as parallel tasks
+        #
         for s in self._simultons.values():
-            s.shutdown()
+            s.close_sockets()
+
+        await self.setState(SimulationState.SHUTTING)
         log.debug('Closing zmq publisher')
-        # close the zmq publisher
-        # to avoid hanging infinitely
+        #
+        # close the zmq publisher to avoid hanging infinitely
+        #
         self._zsocket.setsockopt(zmq.LINGER, 0)
         self._zsocket.close()
         self._zcontext.term()
+        log.debug('Shutting the simulton proxies')
+        #
+        # TODO: redo this as parallel tasks
+        #
+        for s in self._simultons.values():
+            s.shutdown()
         return
 
     def create_simulton(self, params: NewSimultonParams) -> SimultonResponse:
@@ -251,9 +259,7 @@ async def put_simulation(req: SimulationRequest) -> JSONResponse:
         background = BackgroundTask(shut_the_process)
     else:
         background = None
-    content = SimulationResponse(
-        state=theSimulation.state, rate=theSimulation.rate
-    ).model_dump()
+    content = theSimulation.to_response().model_dump()
     return JSONResponse(content=content, background=background)
 
 

@@ -56,10 +56,15 @@ class TestSimulation(unittest.TestCase):
         log.info('TestSimulation.setUp')
         self._client = SimulationClient()
         self._client.set_up()
+
+        self._simulton_client = None
         return
 
     def tearDown(self) -> None:
         log.info('TestSimulation.tearDown')
+        if self._simulton_client is not None:
+            self._simulton_client.close()
+            self._simulton_client = None
         self._client.tear_down()
         return
 
@@ -131,6 +136,32 @@ class TestSimulation(unittest.TestCase):
         self.assertEqual(rdata, expected)
         #
         # lets stop simulation
+        #
+        return
+
+    def test_minimal_one_simulton(self) -> None:
+        """
+        Minimum test of the simulation + 1 simulton.
+        python3 -m unittest -k test_minimal_one_simulton tests/simulation_test.py
+        """
+        log.info('test_minimal_one_simulton running')
+        assert self._client is not None
+
+        # create a simulton for a collection of clocks
+        param = NewSimultonParams(src_path='simultons/clock.py')
+        # note the wait=True here
+        rdata = self._client.post_simulton(param)
+        self.assertIsInstance(rdata, dict)
+
+        self._simulton_client = SimultonClient(rdata)
+        self.assertEqual(self._simulton_client._state, 'PAUSED')
+        rdata = self._simulton_client.get_simulton()
+        self.assertEqual(rdata['state'], 'PAUSED')
+        clocks = self._simulton_client.get_collection()
+        log.info(f'clocks: {clocks}')
+        self.assertEqual(clocks, {})
+        #
+        # lets stop simulation and the simulton
         #
         return
 
