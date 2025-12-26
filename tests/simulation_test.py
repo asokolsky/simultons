@@ -254,7 +254,7 @@ class TestSimulation(unittest.TestCase):
         # create a few clock simultons
         #
         start = time.time()
-        sims = self.create_clock_simultons(N)
+        sims = self.create_clocks_simultons(N)
         now = time.time()
         log.info(f'Created {N} simultons in {now - start} secs')
         #
