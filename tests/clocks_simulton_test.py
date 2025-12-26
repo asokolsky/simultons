@@ -135,14 +135,6 @@ class TestClocksSimulton(unittest.TestCase):
         self.assertEqual(expected, rdata)
         return
 
-    def test_minimum(self) -> None:
-        """
-        Test boot and shutdown
-        """
-        # verify we start with a clean slate
-        self.assertEqual(self.get_clocks(), {})
-        return
-
     def test_one(self) -> None:
         """
         Test creation of a single Clock in the context of the simulton

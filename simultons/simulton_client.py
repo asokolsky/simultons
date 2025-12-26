@@ -104,9 +104,35 @@ class SimultonClient:
         assert status_code == 200
         return rdata
 
+    def get_collection_item(self, item_id: str) -> dict | None:
+        """
+        Retrieve a specific item from the collection.
+        """
+        (status_code, rdata) = self._restc.get(f'{self._endpoint}/{item_id}')
+        if status_code == 404:
+            return None
+        assert status_code == 200
+        return rdata
+
+    def del_collection_item(self, item_id: str) -> dict | None:
+        """
+        Delete a specific item from the collection.
+        """
+        (status_code, rdata) = self._restc.delete(f'{self._endpoint}/{item_id}')
+        if status_code == 404:
+            return None
+        assert status_code == 200
+        return rdata
+
     def new_collection_item(self, param: dict) -> tuple[int, Any]:
         """
-        Retrieve the collection of objects from the Simulton service.
+        Create a new collection item.
         """
         (status_code, rdata) = self._restc.post(self._endpoint, param)
         return (status_code, rdata)
+
+    async def async_new_collection_item(self, param: dict) -> tuple[int, Any]:
+        """
+        Create a new collection item.
+        """
+        return await self._arestc.post(self._endpoint, param)
