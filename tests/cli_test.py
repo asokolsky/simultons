@@ -106,7 +106,7 @@ class TestCLI(unittest.TestCase):
         Feed the background CLI session one command at a time.
         """
 
-        cmd = ['.venv/bin/python3', '-m', 'simultons']
+        cmd: list[str] | str = ['.venv/bin/python3', '-m', 'simultons']
         with ProcessSession(cmd) as session:
             cmd = 'set debug true'
             log.debug(f'cmd: {cmd}')

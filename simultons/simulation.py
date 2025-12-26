@@ -149,7 +149,7 @@ class Simulation:
         # TODO: redo this as parallel tasks
         #
         for s in self._simultons.values():
-            s.close_sockets()
+            await s.close_sockets()
 
         await self.setState(SimulationState.SHUTTING)
         log.debug('Closing zmq publisher')
@@ -164,7 +164,7 @@ class Simulation:
         # TODO: redo this as parallel tasks
         #
         for s in self._simultons.values():
-            s.shutdown()
+            await s.shutdown()
         return
 
     def create_simulton(self, params: NewSimultonParams) -> SimultonResponse:
@@ -178,7 +178,7 @@ class Simulation:
         self._next_simulton_port += 1
         # wait to hear from it...
         simulton.wait_until_reachable(2)
-        return simulton.to_response()
+        return simulton.to_simulton_response()
 
 
 theSimulation: Simulation | None = None  # Simulation()  # noqa: N816
@@ -228,10 +228,8 @@ Can be used to create new simultons, destroy them, etc.
 )
 
 
-@app.get(
-    api_simulation, response_model=SimulationResponse, tags=[Tags.simulation]
-)
-async def get_simulation(req: Request) -> dict:
+@app.get(api_simulation, tags=[Tags.simulation])
+async def get_simulation(req: Request) -> SimulationResponse:
     """
     Get the simulation state
     """
@@ -296,7 +294,8 @@ async def get_simultons() -> dict:
     assert theSimulation is not None
     # NOTE: this does NOT involve talking to simultons
     return {
-        port: s.to_response() for port, s in theSimulation._simultons.items()
+        port: s.to_simulton_response().model_dump_json()
+        for port, s in theSimulation._simultons.items()
     }
 
 
@@ -312,7 +311,7 @@ async def get_simulton(id: int) -> SimultonResponse | JSONResponse:
     """
     assert theSimulation is not None
     try:
-        return theSimulation._simultons[id].to_response()
+        return theSimulation._simultons[id].to_simulton_response()
     except IndexError:
         pass
     content = Message('Item not found').model_dump()

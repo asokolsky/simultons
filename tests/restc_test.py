@@ -32,7 +32,7 @@ uris = [
 user_agent = ['python-httpx/' + httpx.__version__]
 
 
-class TestRestC(unittest.TestCase):
+class TestAsyncRestC(unittest.IsolatedAsyncioTestCase):
     """
     Test HTTP client.
     We test the client against http://httpbin.org
@@ -40,27 +40,35 @@ class TestRestC(unittest.TestCase):
     https://github.com/dcos/examples/tree/master/httpbin/1.9#use-httpbin
     """
 
-    def setUp(self) -> None:
+    async def asyncSetUp(self) -> None:
         """
         Executed prior to each test.
         """
+        log.info('asyncSetUp')
         self.host = 'httpbin.io'
         port = 80
         verbose = True
         dumpHeaders = False
-        self.restc = rest_client(self.host, port, verbose, dumpHeaders)
-        self.arestc = async_rest_client(self.host, port, verbose, dumpHeaders)
+        self.restc: rest_client | None = rest_client(
+            self.host, port, verbose, dumpHeaders
+        )
+        self.arestc: async_rest_client | None = async_rest_client(
+            self.host, port, verbose, dumpHeaders
+        )
         return
 
-    def tearDown(self) -> None:
+    async def asyncTearDown(self) -> None:
         """
         Executed after each test
         """
-        self.restc.close()
-        self.restc = None
-        with suppress(RuntimeError):
-            asyncio.run(self.arestc.close())
-        self.arestc = None
+        log.info('asyncTearDown')
+        if self.restc is not None:
+            self.restc.close()
+            self.restc = None
+        if self.arestc is not None:
+            with suppress(RuntimeError):
+                await self.arestc.close()
+            self.arestc = None
         return
 
     def test_get(self) -> None:
@@ -68,6 +76,7 @@ class TestRestC(unittest.TestCase):
         Test rest_client.get
         """
         uri = '/ip'
+        assert self.restc is not None
         (status_code, rdata) = self.restc.get(uri)
         self.assertEqual(status_code, 200)
         self.assertEqual(len(rdata), 1)
@@ -123,6 +132,7 @@ class TestRestC(unittest.TestCase):
             'b': 1234,
             'c': {'d': ['I', 'love', 'REST'], 'e': 'done'},
         }
+        assert self.restc is not None
         (status_code, rdata) = self.restc.post(uri, da)
         self.assertEqual(status_code, 200)
         expected = {
@@ -172,6 +182,7 @@ class TestRestC(unittest.TestCase):
         Test rest_client.delete
         """
         uri = '/delete'
+        assert self.restc is not None
         (status_code, rdata) = self.restc.delete(uri)
         self.assertEqual(status_code, 200)
         expected = {
@@ -214,6 +225,7 @@ class TestRestC(unittest.TestCase):
             'b': 1234,
             'c': {'d': ['I', 'love', 'REST'], 'e': 'done'},
         }
+        assert self.restc is not None
         (status_code, rdata) = self.restc.put(uri, da)
         self.assertEqual(status_code, 200)
         expected = {
@@ -262,6 +274,7 @@ class TestRestC(unittest.TestCase):
             'b': 1234,
             'c': {'d': ['I', 'love', 'REST'], 'e': 'done'},
         }
+        assert self.restc is not None
         (status_code, rdata) = self.restc.patch(uri, da)
         self.assertEqual(status_code, 200)
         expected = {
@@ -300,32 +313,22 @@ class TestRestC(unittest.TestCase):
             self.assertEqual(headers[hdr], expected['headers'][hdr])
         return
 
-    # async def get_one(self, uri: str) -> int:
-    #    # response = await client.get(uri)
-    #    sc, jresp = self.arestc.get(uri)
-    #    return sc
-
-    async def get_many(self) -> None:
-        """
-        Try to GET multiple URIs in parallel
-        """
-        log.info(f'Retrieving {len(uris)} URIs in parallel')
-        start = time.time()
-
-        results = await asyncio.gather(*(self.arestc.get(uri) for uri in uris))
-
-        elapsed = time.time() - start
-        log.info(f'Retrieved {len(uris)} URIs in {elapsed:.3f} secs')
-        log.info(f'asyncio.gather => {results}')
-        return
-
-    def test_multiple_gets_parallel(self) -> None:
+    async def test_multiple_gets_parallel(self) -> None:
         """
         Try rest_client.get in parallel.
         To run just this test:
         python3 -m unittest -k test_multiple_gets_p tests/restc_test.py
         """
-        asyncio.run(self.get_many())
+        log.info(f'Retrieving {len(uris)} URIs in parallel')
+        start = time.time()
+
+        assert self.arestc is not None
+        results = await asyncio.gather(*(self.arestc.get(uri) for uri in uris))
+
+        elapsed = time.time() - start
+        log.info(f'Retrieved {len(uris)} URIs in {elapsed:.3f} secs')
+        log.info(f'asyncio.gather => {results}')
+
         # produces:
         # Retrieved 6 URIs in 1.043 secs
         return
@@ -338,6 +341,7 @@ class TestRestC(unittest.TestCase):
         log.info(f'Retrieving {len(uris)} URIs sequentially')
         start = time.time()
 
+        assert self.restc is not None
         for uri in uris:
             self.restc.get(uri)
 

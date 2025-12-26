@@ -10,51 +10,37 @@ from simultons.building import NewElevatorParams
 log = setup_logging(__name__)
 
 
-class TestSimulton(unittest.TestCase):
+class TestSimulton(unittest.IsolatedAsyncioTestCase):
     """
     Verify launching/shutting a fastapi process
     """
 
-    _simulton: SimultonProxy | None = None
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        """
-        For all the tests
-        """
-        log.info('TestSimulton.setUpClass')
-        cls._simulton = SimultonProxy('simultons/building/elevator.py', 9100)
-        #
-        # start the simulton process
-        #
-        assert cls._simulton.launch()
-        assert cls._simulton.wait_until_reachable()
-        return
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        """
-        Shut FastAPI process
-        """
-        log.info('TestSimulton.tearDownClass')
-        #
-        # shut the simulton process
-        #
-        assert cls._simulton is not None
-        cls._simulton.shutdown()
-        return
-
-    def setUp(self) -> None:
+    async def asyncSetUp(self) -> None:
         # log.info('setUp', 'fastapi pid:', self.popen.pid)
         #
         # verify the FastAPI server is running
         #
+        self._simulton: SimultonProxy | None = SimultonProxy(
+            'simultons/building/elevator.py', 9100
+        )
+        #
+        # start the simulton process
+        #
+        assert self._simulton.launch()
+        assert self._simulton.wait_until_reachable()
+
         (status_code, _) = self._simulton.restc.get(api_simulton)
         self.assertEqual(status_code, 200)
         return
 
-    def tearDown(self) -> None:
-        # log.info('tearDown')
+    async def asyncTearDown(self) -> None:
+        log.info('asyncTearDown')
+        #
+        # shut the simulton process
+        #
+        if self._simulton is not None:
+            await self._simulton.shutdown()
+            self._simulton = None
         return
 
     def test_all(self) -> None:
@@ -63,7 +49,7 @@ class TestSimulton(unittest.TestCase):
         communication is used, not test client.
         """
         # log.info('test_all', 'fastapi pid:', self.popen.pid)
-
+        assert self._simulton is not None
         (status_code, rdata) = self._simulton.restc.get(api_simulton)
         self.assertTrue(status_code, 200)
         self.assertIn(rdata['state'], ['PAUSED', 'INIT'])

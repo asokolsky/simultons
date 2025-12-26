@@ -1,4 +1,3 @@
-import asyncio
 from contextlib import suppress
 from typing import Any
 
@@ -22,32 +21,34 @@ class SimultonClient:
     def __init__(self, resp: SimultonResponse) -> None:
         log.debug(f'SimultonClient(resp={resp})')
         self._host = '127.0.0.1'
-        self._description = resp['description']
+        self._description = resp.description
         assert isinstance(self._description, str)
-        self._endpoint = resp['endpoint']
+        self._endpoint = resp.endpoint
         assert isinstance(self._endpoint, str)
-        self._port = resp['port']
+        self._port = resp.port
         assert isinstance(self._port, int)
-        self._rate = resp['rate']
+        self._rate = resp.rate
         assert isinstance(self._rate, float)
-        self._state = resp['state']
+        self._state = resp.state
         assert isinstance(self._state, str)
-        self._title = resp['title']
+        self._title = resp.title
         assert isinstance(self._title, str)
-        self._version = resp['version']
+        self._version = resp.version
         assert isinstance(self._version, str)
         #
         # control REST client verbosity
         #
         verbose = True
         dumpHeaders = False
-        self._arestc = async_rest_client(
+        self._arestc: async_rest_client | None = async_rest_client(
             self._host, self._port, verbose, dumpHeaders
         )
-        self._restc = rest_client(self._host, self._port, verbose, dumpHeaders)
+        self._restc: rest_client | None = rest_client(
+            self._host, self._port, verbose, dumpHeaders
+        )
         return
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """
         Close the REST client connections.
         """
@@ -56,7 +57,7 @@ class SimultonClient:
             self._restc = None
         if self._arestc is not None:
             with suppress(RuntimeError):
-                asyncio.run(self._arestc.close())
+                await self._arestc.close()
             self._arestc = None
         return
 
@@ -65,7 +66,7 @@ class SimultonClient:
         """
         URL of the simulton REST service.
         """
-        return f'http://{self._host}:{self._port}{self.__endpoint}'
+        return f'http://{self._host}:{self._port}{self._endpoint}'
 
     def wait_until_reachable(self) -> None:
         """
@@ -81,10 +82,12 @@ class SimultonClient:
         """
         Retrieve the SimultonResponse
         """
+        assert self._restc is not None
         (status_code, rdata) = self._restc.get(api_simulton)
         assert status_code == 200
         log.debug(f'SimultonClient.get_simulton() => {rdata}')
 
+        assert isinstance(rdata, dict)
         assert self._description == rdata['description']
         assert self._endpoint == rdata['endpoint']
         assert self._port == rdata['port']
@@ -94,45 +97,54 @@ class SimultonClient:
         assert isinstance(self._state, str)
         assert self._title == rdata['title']
         assert self._version == rdata['version']
-        return rdata
+        return SimultonResponse(**rdata)
 
     def get_collection(self) -> dict[str, dict]:
         """
         Retrieve the collection of objects from the Simulton service.
         """
+        assert self._restc is not None
         (status_code, rdata) = self._restc.get(self._endpoint)
         assert status_code == 200
+        assert isinstance(rdata, dict)
         return rdata
 
     def get_collection_item(self, item_id: str) -> dict | None:
         """
         Retrieve a specific item from the collection.
         """
+        assert self._restc is not None
         (status_code, rdata) = self._restc.get(f'{self._endpoint}/{item_id}')
         if status_code == 404:
             return None
         assert status_code == 200
+        assert isinstance(rdata, dict)
         return rdata
 
     def del_collection_item(self, item_id: str) -> dict | None:
         """
         Delete a specific item from the collection.
         """
+        assert self._restc is not None
         (status_code, rdata) = self._restc.delete(f'{self._endpoint}/{item_id}')
         if status_code == 404:
             return None
         assert status_code == 200
+        assert isinstance(rdata, dict)
         return rdata
 
     def new_collection_item(self, param: dict) -> tuple[int, Any]:
         """
         Create a new collection item.
         """
+        assert self._restc is not None
         (status_code, rdata) = self._restc.post(self._endpoint, param)
+        assert isinstance(rdata, dict)
         return (status_code, rdata)
 
     async def async_new_collection_item(self, param: dict) -> tuple[int, Any]:
         """
         Create a new collection item.
         """
+        assert self._arestc is not None
         return await self._arestc.post(self._endpoint, param)

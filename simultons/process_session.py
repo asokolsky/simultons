@@ -39,7 +39,7 @@ class ProcessSession:
 
     def __init__(
         self,
-        command_line: list[str],
+        command_line: str | list[str],
         cwd: Path | None = None,
         env: dict | None = None,
     ) -> None:

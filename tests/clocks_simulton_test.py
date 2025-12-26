@@ -12,48 +12,40 @@ from simultons import (
 log = setup_logging(__name__)
 
 
-class TestClocksSimulton(unittest.TestCase):
+class TestClocksSimulton(unittest.IsolatedAsyncioTestCase):
     """
     Verify Clocks Simulton functionality
     """
 
-    _simulton: SimultonProxy | None = None
-
-    @classmethod
-    def setUpClass(cls) -> None:
+    async def asyncSetUp(self) -> None:
         """
         Launch the simulton - usually this is done by the simulation process.
         """
         log.info('TestClockSimulton.setUpClass')
-        cls._simulton = SimultonProxy('simultons/clock.py', 9100)
-        assert cls._simulton.launch()
-        assert cls._simulton.wait_until_reachable() is not None
+        self._simulton: SimultonProxy | None = SimultonProxy(
+            'simultons/clock.py', 9100
+        )
+        assert self._simulton.launch()
+        assert self._simulton.wait_until_reachable() is not None
         return
 
-    @classmethod
-    def tearDownClass(cls) -> None:
+    async def asyncTearDown(self) -> None:
         """
         Shut the simulton process
         """
         log.info('TestClockSimulton.tearDownClass')
         # request the shutdown - compare this to
-        assert cls._simulton is not None
-        cls._simulton.shutting()
-        cls._simulton.close_sockets()
+        assert self._simulton is not None
+        self._simulton.shutting()
+        await self._simulton.close_sockets()
         #
         # wait for the process to actually terminate
         #
-        cls._simulton.wait_to_die(2)
+        self._simulton.wait_to_die(2)
         #
         # shut the simulton process
         #
-        cls._simulton.shutdown()
-        return
-
-    def setUp(self) -> None:
-        return
-
-    def tearDown(self) -> None:
+        await self._simulton.shutdown()
         return
 
     async def create_clock(self, num: int, latency: float) -> ClockResponse:
@@ -71,7 +63,7 @@ class TestClocksSimulton(unittest.TestCase):
         assert rdata['name'] == 'clock-1'
         time = rdata['time']
         assert str(time)
-        return rdata
+        return ClockResponse(**rdata)
 
     def create_clocks(
         self, num_clocks: int, latency: float
@@ -81,6 +73,8 @@ class TestClocksSimulton(unittest.TestCase):
         Returns dict[clockID, ClockResponse]
         """
         res: dict[str, ClockResponse] = {}
+        assert self._simulton is not None
+        assert self._simulton.restc is not None
         for num in range(num_clocks):
             name = f'clock-{num}'
             params = NewClockParams(name=name, latency=latency)
@@ -97,11 +91,15 @@ class TestClocksSimulton(unittest.TestCase):
         return res
 
     def get_clocks(self) -> dict[str, ClockResponse]:
+        assert self._simulton is not None
+        assert self._simulton.restc is not None
         (status_code, rdata) = self._simulton.restc.get(api_clocks)
         self.assertEqual(status_code, 200)
-        return rdata
+        return {k: ClockResponse(**v) for k, v in rdata.items()}
 
     def del_clocks(self, clocks: dict[str, ClockResponse]) -> None:
+        assert self._simulton is not None
+        assert self._simulton.restc is not None
         for clock_id in clocks:
             (status_code, _) = self._simulton.restc.delete(
                 f'{api_clocks}/{clock_id}'
@@ -110,14 +108,18 @@ class TestClocksSimulton(unittest.TestCase):
         return
 
     def get_time(self, clock_id: str) -> ClockResponse:
+        assert self._simulton is not None
+        assert self._simulton.restc is not None
         (status_code, rdata) = self._simulton.restc.get(
             f'{api_clocks}/{clock_id}'
         )
         self.assertEqual(status_code, 200)
         assert isinstance(rdata, dict)
-        return rdata
+        return ClockResponse(**rdata)
 
     def get_nonexistent_clock(self) -> None:
+        assert self._simulton is not None
+        assert self._simulton.restc is not None
         (status_code, rdata) = self._simulton.restc.get(
             f'{api_clocks}/1234567890'
         )
@@ -127,6 +129,8 @@ class TestClocksSimulton(unittest.TestCase):
         return
 
     def del_nonexistent_clock(self) -> None:
+        assert self._simulton is not None
+        assert self._simulton.restc is not None
         (status_code, rdata) = self._simulton.restc.delete(
             f'{api_clocks}/1234567890'
         )

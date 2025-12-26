@@ -166,6 +166,7 @@ async def get_simulton(req: Request) -> SimultonResponse:
     log.debug('get clock simulton, port=%d', req.url.port)
     # global theClocks
     assert theClocks is not None
+    assert req.url.port is not None
     # no need to await - Simulton.to_response is NOT async
     return theClocks.to_response(req.url.port)
 
@@ -176,6 +177,7 @@ async def put_simulton(req: SimultonRequest, request: Request) -> JSONResponse:
     Handle a request to change the simulton state
     """
     assert theClocks is not None
+    assert request.url.port is not None
     return theClocks.on_put_simulton(req, request.url.port)
 
 

@@ -23,7 +23,7 @@ class SimultonProxy(Simulton):
 
     def __init__(self, source_path: str, port: int) -> None:
         super().__init__()
-        self._launcher = FastLauncher(source_path, port)
+        self._launcher: FastLauncher | None = FastLauncher(source_path, port)
         self.description = ''
         self.endpoint = ''
         self.title = ''
@@ -35,11 +35,13 @@ class SimultonProxy(Simulton):
     @property
     def path(self) -> Path:
         """Path accessor"""
+        assert self._launcher is not None
         return self._launcher._path
 
     @property
     def port(self) -> int:
         """Port accessor"""
+        assert self._launcher is not None
         return self._launcher.port
 
     @property
@@ -48,6 +50,7 @@ class SimultonProxy(Simulton):
         REST client to talk to the simulton
         """
         assert self._launcher is not None
+        assert self._launcher._restc is not None
         return self._launcher._restc
 
     @property
@@ -56,9 +59,10 @@ class SimultonProxy(Simulton):
         Async REST client to talk to the simulton
         """
         assert self._launcher is not None
+        assert self._launcher._arestc is not None
         return self._launcher._arestc
 
-    def to_response(self) -> SimultonResponse:
+    def to_simulton_response(self) -> SimultonResponse:
         return SimultonResponse(
             description=self.description,
             endpoint=self.endpoint,
@@ -74,6 +78,7 @@ class SimultonProxy(Simulton):
         Launch the simulton process
         """
         log.debug(f'launch({self})')
+        assert self._launcher is not None
         return self._launcher.launch()
 
     def wait_until_reachable(self, timeout: int = 20) -> bool:
@@ -81,6 +86,7 @@ class SimultonProxy(Simulton):
         Side-effect: sets the attributes
         """
         log.debug(f'wait_until_reachable({api_simulton})')
+        assert self._launcher is not None
         jresp = self._launcher.wait_until_reachable(api_simulton, timeout)
         log.debug(f'wait_until_reachable({api_simulton}) => {jresp}')
         assert isinstance(jresp, dict)
@@ -122,21 +128,24 @@ class SimultonProxy(Simulton):
         (status_code, _) = self.restc.put(api_simulton, params.model_dump())
         return status_code == 202
 
-    def shutdown(self) -> None:
+    async def shutdown(self) -> None:
         """
         Forcefully shut the simulton process
         Compare to SimulationClient.tear_down
         """
         log.debug('shutdown')
+        assert self._launcher is not None
         self._launcher.wait_to_die(5)
-        self._launcher.shutdown(timeout=1)
+        await self._launcher.shutdown(timeout=1)
         self._launcher = None
         return
 
     def wait_to_die(self, timeout: float = 0.5) -> bool:
         log.debug(f'wait_to_die({timeout})')
+        assert self._launcher is not None
         return self._launcher.wait_to_die(timeout=timeout)
 
-    def close_sockets(self) -> None:
-        self._launcher.close_sockets()
+    async def close_sockets(self) -> None:
+        assert self._launcher is not None
+        await self._launcher.close_sockets()
         return

@@ -47,11 +47,13 @@ class SimulationClient:
     @property
     def restc(self) -> rest_client:
         assert self._launcher is not None
+        assert self._launcher._restc is not None
         return self._launcher._restc
 
     @property
     def arestc(self) -> async_rest_client:
         assert self._launcher is not None
+        assert self._launcher._arestc is not None
         return self._launcher._arestc
 
     def set_up(self) -> bool:
@@ -72,12 +74,13 @@ class SimulationClient:
         log.debug(f'FastLauncher({source}, {port}).launch() => {pid}')
         res = self._launcher.wait_until_reachable(api_simulation)
         log.debug(f'wait_until_reachable({api_simulation}) => {res}')
+        assert res is not None
         assert res['state'] == 'PAUSED'
         assert res['rate'] == 0.0
         assert res['port']
         return True
 
-    def tear_down(self) -> None:
+    async def tear_down(self) -> None:
         """
         Request simulation process shutdown.
         """
@@ -89,12 +92,12 @@ class SimulationClient:
                 # time.sleep(0.1)
                 # log.debug('tear_down2')
                 # self._launcher.wait_to_die(5)
-            self._launcher.close_sockets()
-            self._launcher.shutdown(timeout=3)
+            await self._launcher.close_sockets()
+            await self._launcher.shutdown(timeout=3)
             self._launcher = None
         return
 
-    def __enter__(self) -> 'SimulationClient':
+    async def __aenter__(self) -> 'SimulationClient':
         """
         Enter the with block, start the CLI session
         """
@@ -102,7 +105,7 @@ class SimulationClient:
         self.set_up()
         return self
 
-    def __exit__(
+    async def __aexit__(
         self,
         exception_type: type[BaseException] | None,
         exception_value: BaseException | None,
@@ -114,7 +117,7 @@ class SimulationClient:
         log.info(
             f'SimulationClient.__exit__({exception_type}, {exception_value}, {exception_traceback})'
         )
-        self.tear_down()
+        await self.tear_down()
         return
 
     def get_simulation(self) -> dict | None:
@@ -158,6 +161,7 @@ class SimulationClient:
             api_simultons, params.model_dump()
         )
         assert status_code == 201
+        assert isinstance(rdata, dict)
         # rdata looks like
         # {
         #     'description': '',
@@ -168,16 +172,16 @@ class SimulationClient:
         #     'version': ''
         # }
         assert isinstance(rdata, dict)
-        return rdata
+        return SimultonResponse(**rdata)
 
     def get_simultons(self) -> dict[int, SimultonResponse] | None:
         """
         Request a list of simultons
         """
         (status_code, rdata) = self.restc.get(api_simultons)
-        assert status_code == 200
+        assert status_code == 200, f'expected: 200, got: {status_code} {rdata}'
         assert isinstance(rdata, dict)
-        return rdata
+        return {key: SimultonResponse(**val) for key, val in rdata.items()}
 
     def get_simulton(self, id: Any) -> SimultonResponse | None:
         """
@@ -186,6 +190,6 @@ class SimulationClient:
         (status_code, rdata) = self.restc.get(f'{api_simultons}/{id}')
         if status_code == 200:
             assert isinstance(rdata, dict)
-            return rdata
+            return SimultonResponse(**rdata)
         log.info(f'get_simulton({id}) failed - {status_code}')
         return None

@@ -3,6 +3,7 @@ Run the simulation and possibly some simultons like this:
     python -m simultons --version
 """
 
+import asyncio
 import json
 import logging
 import sys
@@ -63,10 +64,11 @@ class SimultonsShell(cmd2.Cmd):
         Get all or just one simulton
         """
         if not args:
-            js = self._client.get_simultons()
+            self.poutput(json.dumps(self._client.get_simultons(), indent=2))
         else:
-            js = self._client.get_simulton(args)
-        self.poutput(json.dumps(js, indent=2))
+            sim = self._client.get_simulton(args)
+            assert sim is not None
+            self.poutput(json.dumps(sim.model_dump(), indent=2))
         return
 
     def do_simultons_post(self, args: str) -> None:
@@ -102,7 +104,7 @@ epilog = """Examples:
 """
 
 
-def main() -> int:
+async def main() -> int:
     """
     Run the simulation
     """
@@ -144,7 +146,7 @@ def main() -> int:
     setup_logging(__name__, logging.NOTSET, args.logging_config)
     # print_logging_tree()
 
-    with SimulationClient(args.settings) as client:
+    async with SimulationClient(args.settings) as client:
         url = client.url
         intro = f"""
 Simulation API: {url}{api_simulation}
@@ -159,4 +161,4 @@ Docs: {url}/docs"""
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(asyncio.run(main()))

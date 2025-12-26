@@ -241,12 +241,12 @@ async def elevators_lifespan(_: FastAPI) -> AsyncGenerator:
     log.debug('elevators startup_event')
     global theElevators
     theElevators = ElevatorsSimulton()
-    theElevators.on_startup()
+    await theElevators.on_startup()
 
     yield  # The application starts receiving requests after this point
 
     log.debug(f'elevators shutdown_event {theElevators}')
-    theElevators.on_shutdown()
+    await theElevators.on_shutdown()
     theElevators = None
     return
 
@@ -258,6 +258,7 @@ app = ElevatorsSimulton.create_app(elevators_lifespan)
 async def get_simulton(req: Request) -> SimultonResponse:
     log.debug('get elevator simulton')
     assert theElevators is not None
+    assert req.url.port is not None
     return theElevators.to_response(req.url.port)
 
 
@@ -267,6 +268,7 @@ async def put_simulton(req: SimultonRequest, request: Request) -> JSONResponse:
     Handle a request to change the simulton state
     """
     assert theElevators is not None
+    assert request.url.port is not None
     return theElevators.on_put_simulton(req, request.url.port)
 
 

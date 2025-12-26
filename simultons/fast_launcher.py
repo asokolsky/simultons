@@ -2,7 +2,6 @@
 FastAPI process launcher
 """
 
-import asyncio
 import os
 import signal
 import sys
@@ -148,10 +147,12 @@ class FastLauncher:
         #
         verbose = True
         dumpHeaders = False
-        self._arestc = async_rest_client(
+        self._arestc: async_rest_client | None = async_rest_client(
             self._host, self._port, verbose, dumpHeaders
         )
-        self._restc = rest_client(self._host, self._port, verbose, dumpHeaders)
+        self._restc: rest_client | None = rest_client(
+            self._host, self._port, verbose, dumpHeaders
+        )
         return
 
     @property
@@ -242,7 +243,7 @@ class FastLauncher:
         log.debug(f'get_child_output in {len(d)} parts')
         return ''.join(d)
 
-    def close_sockets(self) -> None:
+    async def close_sockets(self) -> None:
         """
         Close the sockets
         """
@@ -252,17 +253,17 @@ class FastLauncher:
         if self._arestc is not None:
             log.debug('closing self._arestc')
             with suppress(RuntimeError):
-                asyncio.run(self._arestc.close())
+                await self._arestc.close()
             self._arestc = None
         return
 
-    def shutdown(self, timeout: float = 0.5) -> bool:
+    async def shutdown(self, timeout: float = 0.5) -> bool:
         """
         Stop the FastAPI service process
         """
         log.debug(f'shutdown({timeout})')
         if self._restc is not None:
-            self.close_sockets()
+            await self.close_sockets()
 
         before = self.get_child_output()
         assert self._process is not None
