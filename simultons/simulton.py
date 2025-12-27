@@ -116,7 +116,10 @@ class Simulton:
         return ''
 
     def on_simulation_state_update(self, resp: SimulationResponse) -> None:
+        # compare this to on_put_simulton
         log.debug(f'on_simulation_state_update {resp}')
+        if resp.rate is not None:
+            self.rate = resp.rate
         if resp.state == SimulationState.PAUSED:
             self.state = SimultonState.PAUSED
         elif resp.state == SimulationState.RUNNING:
@@ -299,6 +302,7 @@ class Simulton:
         """
         Handle REST API PUT to change the simulton state
         """
+        log.debug(f'on_put_simulton {req} on port {port}')
         if req.rate is not None:
             self.rate = req.rate
         self.state = req.state

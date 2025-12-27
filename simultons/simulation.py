@@ -81,7 +81,7 @@ class Simulation:
 
     async def broadcast_state_update(self) -> None:
         """
-        Share the state update with the subscribers.
+        Share the state update with all the subscribers.
         """
         message = self.to_response().model_dump_json()
         assert self._zsocket is not None

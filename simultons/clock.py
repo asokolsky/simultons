@@ -126,10 +126,12 @@ class ClocksSimulton(Simulton):
         """
         State just transitioned to PAUSED
         """
-        log.debug('ClocksSimulton.on_paused')
+        log.debug(f'ClocksSimulton.on_paused {self._state} {self._rate}')
 
         assert self.is_paused()
-        assert self._rate != 0
+        if self._rate == 0:
+            # we are paused while in the INIT or PAUSED state
+            return
         now = time.time()
         # notify all the clocks about the change
         for clock in self.instances.values():
