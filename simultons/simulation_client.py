@@ -11,6 +11,7 @@ from simultons import (
     FastLauncher,
     NewSimultonParams,
     SimulationRequest,
+    SimulationResponse,
     SimulationState,
     SimultonResponse,
     api_simulation,
@@ -120,7 +121,7 @@ class SimulationClient:
         await self.tear_down()
         return
 
-    def get_simulation(self) -> dict | None:
+    def get_simulation(self) -> SimulationResponse | None:
         """
         Issue an HTTP GET to the simulation
         """
@@ -128,27 +129,51 @@ class SimulationClient:
             (status_code, rdata) = self.restc.get(api_simulation)
             assert status_code == 200
             assert isinstance(rdata, dict)
-            return rdata
+            return SimulationResponse(**rdata)
         except httpx.ConnectError as err:
             log.warning(f'Caught in SimulationClient.get_simulation: {err}')
         except httpx.ReadTimeout as err:
             log.warning(f'Caught in SimulationClient.get_simulation: {err}')
         return None
 
-    def put_simulation(self, req: SimulationRequest) -> dict | None:
+    def put_simulation(
+        self, req: SimulationRequest
+    ) -> SimulationResponse | None:
         """
         Request simulation state change
         """
-        assert self._launcher is not None
         try:
-            (_, rdata) = self.restc.put(api_simulation, req.model_dump())
+            (status_code, rdata) = self.restc.put(
+                api_simulation, req.model_dump()
+            )
+            assert status_code == 202
             assert isinstance(rdata, dict)
-            return rdata
+            return SimulationResponse(**rdata)
         except httpx.ConnectError as err:
             log.info(f'Caught in SimulationClient.put_simulation: {err}')
         except httpx.ReadTimeout as err:
             log.info(f'Caught in SimulationClient.put_simulation: {err}')
         return None
+
+    def pause(self) -> bool:
+        """
+        Send a blocking! request to the simulation to move it into the PAUSED state.
+        """
+        log.debug('pause()')
+        resp = self.put_simulation(
+            SimulationRequest(state=SimulationState.PAUSED)
+        )
+        return resp is not None
+
+    def run(self, rate: float = 1.0) -> bool:
+        """
+        Send a blocking! request to the simulation to move it into the RUNNING state.
+        """
+        log.debug(f'run({rate})')
+        resp = self.put_simulation(
+            SimulationRequest(state=SimulationState.RUNNING, rate=rate)
+        )
+        return resp is not None
 
     def post_simulton(
         self, params: NewSimultonParams

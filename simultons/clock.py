@@ -48,29 +48,24 @@ class Clock:
         self._last_start: float = 0
         return
 
-    def on_paused(self) -> bool:
+    def on_paused(self, now: float, rate: float) -> bool:
         """
         Simulation pause event handler
         """
-        log.debug('Clock.on_paused')
-        assert self._sim.is_paused()
-        rate = self._sim._rate
-        assert rate != 0
+        # log.debug('Clock.on_paused')
         if self._last_start != 0:
             # accumulate _time
-            self._time += (time.time() - self._last_start) * rate
+            self._time += (now - self._last_start) * rate
             self._last_start = 0
         return True
 
-    def on_running(self, rate: float) -> bool:
+    def on_running(self, now: float, rate: float) -> bool:
         """
         Simulation run event handler
         """
-        log.debug('Clock.on_running')
-        assert self._sim.is_running()
-        assert rate > 0
+        # log.debug(f'Clock.on_running({rate})')
         if self._last_start == 0:
-            self._last_start = time.time()
+            self._last_start = now
         return True
 
     @property
@@ -119,9 +114,12 @@ class ClocksSimulton(Simulton):
         State just transitioned to RUNNING
         """
         log.debug('ClocksSimulton.on_running')
+        assert self.is_running()
+        assert self._rate > 0
+        now = time.time()
         # notify all the clocks about the change
         for clock in self.instances.values():
-            clock.on_running(self._rate)
+            clock.on_running(now, self._rate)
         return
 
     def on_paused(self) -> None:
@@ -129,9 +127,13 @@ class ClocksSimulton(Simulton):
         State just transitioned to PAUSED
         """
         log.debug('ClocksSimulton.on_paused')
+
+        assert self.is_paused()
+        assert self._rate != 0
+        now = time.time()
         # notify all the clocks about the change
         for clock in self.instances.values():
-            clock.on_paused()
+            clock.on_paused(now, self._rate)
         return
 
 

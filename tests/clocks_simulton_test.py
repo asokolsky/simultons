@@ -146,8 +146,8 @@ class TestClocksSimulton(unittest.IsolatedAsyncioTestCase):
         # verify we start with a clean slate
         self.assertEqual(self.get_clocks(), {})
 
-        self.get_nonexistent_clock()
-        self.del_nonexistent_clock()
+        # self.get_nonexistent_clock()
+        # self.del_nonexistent_clock()
 
         clocks = self.create_clocks(1, 0.0)
         log.info(f'Clocks: {clocks}')

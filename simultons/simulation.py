@@ -248,6 +248,7 @@ async def put_simulation(req: SimulationRequest) -> JSONResponse:
     """
     Update the simulation state
     """
+    log.debug(f'put_simulation({req})')
     assert theSimulation is not None
     if req.rate is not None:
         theSimulation.rate = req.rate
@@ -258,7 +259,7 @@ async def put_simulation(req: SimulationRequest) -> JSONResponse:
     else:
         background = None
     content = theSimulation.to_response().model_dump()
-    return JSONResponse(content=content, background=background)
+    return JSONResponse(status_code=202, content=content, background=background)
 
 
 @app.post(
