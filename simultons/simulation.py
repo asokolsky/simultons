@@ -167,7 +167,9 @@ class Simulation:
             await s.shutdown()
         return
 
-    def create_simulton(self, params: NewSimultonParams) -> SimultonResponse:
+    async def create_simulton(
+        self, params: NewSimultonParams
+    ) -> SimultonResponse:
         """
         Handle new simulton creation
         """
@@ -177,7 +179,7 @@ class Simulation:
         self._simultons[simulton.port] = simulton
         self._next_simulton_port += 1
         # wait to hear from it...
-        simulton.wait_until_reachable(2)
+        await simulton.async_wait_until_reachable()
         return simulton.to_simulton_response()
 
 
@@ -277,7 +279,7 @@ async def create_simulton(
     """
     assert theSimulation is not None
     try:
-        return theSimulation.create_simulton(params)
+        return await theSimulation.create_simulton(params)
     except ValueError as err:
         content = Message(f'Bummer: {err}').model_dump()
         return JSONResponse(status_code=400, content=content)
@@ -295,7 +297,7 @@ async def get_simultons() -> dict:
     assert theSimulation is not None
     # NOTE: this does NOT involve talking to simultons
     return {
-        port: s.to_simulton_response().model_dump_json()
+        port: s.to_simulton_response()
         for port, s in theSimulation._simultons.items()
     }
 

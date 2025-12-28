@@ -1,7 +1,6 @@
 """
 Simulation REST client in python
 """
-
 from types import TracebackType
 from typing import Any
 
@@ -86,16 +85,16 @@ class SimulationClient:
         Request simulation process shutdown.
         """
         log.debug('tear_down')
-        if self._launcher is not None:
-            req = SimulationRequest(state=SimulationState.SHUTTING)
-            if self.put_simulation(req) is not None:
-                pass
-                # time.sleep(0.1)
-                # log.debug('tear_down2')
-                # self._launcher.wait_to_die(5)
-            await self._launcher.close_sockets()
-            await self._launcher.shutdown(timeout=3)
-            self._launcher = None
+        if self._launcher is None:
+            return
+
+        req = SimulationRequest(state=SimulationState.SHUTTING)
+        res = self.put_simulation(req)
+        log.debug(f'self.put_simulation({req}) => {res}')
+        await self._launcher.close_sockets()
+        self._launcher.wait_to_die(2)
+        await self._launcher.shutdown(3)
+        self._launcher = None
         return
 
     async def __aenter__(self) -> 'SimulationClient':
@@ -183,6 +182,30 @@ class SimulationClient:
         Optionally wait until it is available.
         """
         (status_code, rdata) = self.restc.post(
+            api_simultons, params.model_dump()
+        )
+        assert status_code == 201
+        assert isinstance(rdata, dict)
+        # rdata looks like
+        # {
+        #     'description': '',
+        #     'port': 9500,
+        #     'rate': 0.0,
+        #     'state': 'INIT',
+        #     'title': '',
+        #     'version': ''
+        # }
+        assert isinstance(rdata, dict)
+        return SimultonResponse(**rdata)
+
+    async def async_post_simulton(
+        self, params: NewSimultonParams
+    ) -> SimultonResponse | None:
+        """
+        Request creation of new simulton.
+        Optionally wait until it is available.
+        """
+        (status_code, rdata) = await self.arestc.post(
             api_simultons, params.model_dump()
         )
         assert status_code == 201

@@ -16,7 +16,12 @@ from typing import Any
 
 import uvicorn
 
-from . import async_rest_client, rest_client, wait_until_reachable
+from . import (
+    async_rest_client,
+    async_wait_until_reachable,
+    rest_client,
+    wait_until_reachable,
+)
 from .logging import logging_config, setup_logging
 
 log = setup_logging(__name__)
@@ -204,11 +209,28 @@ class FastLauncher:
             timeout,
         )
 
+    async def async_wait_until_reachable(self, health_uri: str) -> dict | None:
+        """
+        Give some room for the process to start.
+        Returns a JSON produced by health_uri
+        """
+        if self._process.pid == 0:
+            log.error('Call launch() before calling wait_until_reachable')
+            return None
+        if not self._process.is_alive():
+            log.error('Process is dead, cant wait')
+            return None
+        url = f'http://{self._host}:{self._port}{health_uri}'
+        return await async_wait_until_reachable(url)
+
     def wait_to_die(self, timeout: float = 0.5) -> bool:
-        log.debug(f'wait_to_die({timeout}) for {self._process.pid}')
+        """
+        Returns True is the process actually finished.
+        """
+        log.debug(f'wait_to_die({self._process.pid}, {timeout})...')
         if not self._process.is_alive():
             log.info(
-                f'Pid {self._process.pid} already terminated with ec: {self._process.exitcode}'
+                f'wait_to_die({self._process.pid}) -> True, already terminated, ec:{self._process.exitcode}'
             )
             return True
         #
@@ -220,12 +242,12 @@ class FastLauncher:
             # the process has terminated
             elapsed = time.time() - start
             log.info(
-                f'{self._process.pid} died after {elapsed:.3f} secs, ec: {self._process.exitcode}'
+                f'wait_to_die({self._process.pid}) -> True {elapsed:.3f} secs, ec:{self._process.exitcode}'
             )
             return True
 
         log.info(
-            f'Waiting for {self._process.pid} to die timed out after {timeout} secs'
+            f'wait_to_die({self._process.pid}) -> False after {timeout} secs'
         )
         return False
 
@@ -281,11 +303,9 @@ class FastLauncher:
         #
         # wait for the process to actually terminate
         #
-        res = (
-            self.wait_to_die(timeout)
-            if self._process.exitcode is None
-            else True
-        )
+        res = True
+        if self._process.exitcode is None:
+            res = self.wait_to_die(timeout)
         #
         # get the child's stdout and stderr
         #

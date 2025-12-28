@@ -13,6 +13,7 @@ from simultons import (
     NewClockParams,
     NewSimultonParams,
     SimulationClient,
+    SimulationResponse,
     SimultonClient,
     SimultonResponse,
     setup_logging,
@@ -75,7 +76,6 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         Create a new simulton for a collection of clocks
         """
         param = NewSimultonParams(src_path='simultons/clock.py')
-        # note the wait=True here
         assert self._client is not None
         res = self._client.post_simulton(param)
         assert res is not None
@@ -83,34 +83,37 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(simulton_client._state, 'PAUSED')
         return simulton_client
 
-    def create_clocks_simultons(
+    async def create_clocks_simultons(
         self, num_simultons: int
-    ) -> dict[str, SimultonResponse]:
-        res: dict[str, SimultonResponse] = {}
+    ) -> dict[int, SimultonResponse]:
+        """
+        Create N simultons (in parallel)
+        """
         assert self._client is not None
         param = NewSimultonParams(src_path='simultons/clock.py')
-        for _ in range(num_simultons):
-            r = self._client.post_simulton(param)
-            self.assertIsNotNone(r)
-            # r looks like
-            # {
-            #     'description': '',
-            #     'port': 9500,
-            #     'rate': 0.0,
-            #     'state': 'INIT',
-            #     'title': '',
-            #     'version': ''
-            # }
-            assert isinstance(r, SimultonResponse)
-            self.assertEqual(r.state, 'PAUSED')
-            res[str(r.port)] = r
+        tasks = [
+            self._client.async_post_simulton(param)
+            for _ in range(num_simultons)
+        ]
+        start = time.time()
+        resps = await asyncio.gather(*tasks)
+        dt = time.time() - start
+        log.info(f'Created {num_simultons} simultons in {dt:.2f} secs')
+
+        res: dict[int, SimultonResponse] = {}
+        for resp in resps:
+            assert isinstance(resp, SimultonResponse)
+            self.assertEqual(resp.state, 'PAUSED')
+            assert isinstance(resp.port, int)
+            self.assertIsInstance(resp.port, int)
+            res[resp.port] = resp
         return res
 
     async def create_clocks(
         self, sc: SimultonClient, num_clocks: int, latency: float
     ) -> dict[str, ClockResponse]:
         """
-        Create multiple clocks (in series) in a single singleton.
+        Create multiple clocks (in parallel) in a single singleton.
         Returns dict[clockID, ClockResponse]
         """
         tasks = [
@@ -127,7 +130,7 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         resp = await asyncio.gather(*tasks)
         dt = time.time() - start
         log.info(
-            f'Created {num_clocks} clocks with latency {latency} in {dt} secs'
+            f'Created {num_clocks} clocks with latency {latency} in {dt:.2f} secs'
         )
         self.assertGreater(dt, latency)
 
@@ -154,7 +157,7 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         self.assertGreater(dt, latency)
         return rdata
 
-    def test_minimal(self) -> None:
+    async def test_minimorum(self) -> None:
         """
         Minimum test of the simulation.
         python3 -m unittest -k test_minimal tests/simulation_test.py
@@ -294,20 +297,22 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         # pause it
         assert self._client is not None
         self.assertTrue(self._client.pause())
+
         # start it at normal rate
         self.assertTrue(self._client.run())
 
         # sleep for a pre-defined period
         duration = 0.2
         await asyncio.sleep(duration)
-
         # retrieve the theClockId clock
         rdata = self.get_time(
             self._simulton_client, theFastClockId, fast_latency
         )
         assert isinstance(rdata, dict)
         self.assertGreater(rdata['time'], duration + fast_latency)
-        log.info(f'I slept for {duration} clock {rdata["time"]}')
+        log.info(f'slept for {duration} secs, clock: {rdata["time"]}')
+
+        # self.assertTrue(self._client.pause())
 
         # do something, e.g.:
         #   start running simulation
@@ -323,7 +328,7 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         #   verify that the clock time did not change
         return
 
-    def test_many_simultons(self) -> None:
+    async def test_many_simultons(self) -> None:
         """
         Test N simultons
 
@@ -336,33 +341,32 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         N = 15
 
         assert self._client is not None
-        rdata = self._client.get_simulation()
-        assert isinstance(rdata, dict)
-        self.assertEqual(rdata['state'], 'PAUSED')
-        self.assertEqual(rdata['rate'], 0)
-        self.assertTrue(rdata['port'])
+        sim = self._client.get_simulation()
+        assert isinstance(sim, SimulationResponse)
+        self.assertEqual(sim.state, 'PAUSED')
+        self.assertEqual(sim.rate, 0)
+        self.assertTrue(sim.port)
 
-        rdata = self._client.get_simultons()
+        simultons = self._client.get_simultons()
         expected: dict[str, Any] = {}
-        self.assertEqual(rdata, expected)
+        self.assertEqual(simultons, expected)
         #
         # create a few clock simultons
         #
         start = time.time()
-        sims = self.create_clocks_simultons(N)
-        now = time.time()
-        log.info(f'Created {N} simultons in {now - start} secs')
+        sims = await self.create_clocks_simultons(N)
+        dt = time.time() - start
+        log.info(f'Created {N} simultons in {dt:.2f} secs')
         #
         # basic simulton verification
         #
-        rdata = self._client.get_simultons()
-        assert isinstance(rdata, dict)
-        self.assertEqual(len(rdata), len(sims))
-        self.assertIsInstance(rdata, dict)
-        self.assertEqual(len(rdata), len(sims))
-        for id, sim in rdata.items():
-            sim0 = sims[id]
-            self.assertEqual(sim, sim0)
+        simultons = self._client.get_simultons()
+        assert isinstance(simultons, dict)
+        self.assertEqual(len(simultons), len(sims))
+        self.assertIsInstance(simultons, dict)
+        self.assertEqual(len(simultons), len(sims))
+        for id, s in simultons.items():
+            self.assertEqual(s, sims[int(id)])
         #
         # do something, e.g.:
         #   start running simulation
@@ -370,11 +374,10 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         #   start simulation at x2 rate
         #   pause simulation
         #
-        duration = 5
-        time.sleep(duration)
+        duration = 1
+        await asyncio.sleep(duration)
         log.info(f'Enjoying {N} simultons for {duration} secs')
         #
         #  verify that the clock time did not change
         #
-
         return

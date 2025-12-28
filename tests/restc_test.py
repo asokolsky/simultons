@@ -326,7 +326,7 @@ class TestAsyncRestC(unittest.IsolatedAsyncioTestCase):
         results = await asyncio.gather(*(self.arestc.get(uri) for uri in uris))
 
         elapsed = time.time() - start
-        log.info(f'Retrieved {len(uris)} URIs in {elapsed:.3f} secs')
+        log.info(f'Retrieved {len(uris)} URIs in {elapsed:.2f} secs')
         log.info(f'asyncio.gather => {results}')
 
         # produces:
@@ -346,7 +346,7 @@ class TestAsyncRestC(unittest.IsolatedAsyncioTestCase):
             self.restc.get(uri)
 
         elapsed = time.time() - start
-        log.info(f'Retrieved {len(uris)} URIs in {elapsed:.3f} secs')
+        log.info(f'Retrieved {len(uris)} URIs in {elapsed:.2f} secs')
 
         # produces:
         # Retrieved 6 URIs in 4.805 secs

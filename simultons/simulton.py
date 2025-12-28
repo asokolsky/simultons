@@ -228,7 +228,7 @@ class Simulton:
         """
         Simulton FastAPI app shutdown event handler
         """
-        log.debug(f'Simulton.on_shutdown {self}')
+        log.debug(f'on_shutdown {self}')
         # close the zmq subscriber
         # https://zguide.zeromq.org/docs/chapter1/#Making-a-Clean-Exit
         # to avoid hanging infinitely
@@ -247,7 +247,7 @@ class Simulton:
         sys.stderr.flush()
         sys.stdout = sys.__stdout__
         sys.stderr = sys.__stderr__
-        log.debug(f'Simulton.on_shutdown closing {connection_to_parent}')
+        log.debug(f'on_shutdown closing {connection_to_parent}')
         try:
             connection_to_parent.close()
         except Exception as e:

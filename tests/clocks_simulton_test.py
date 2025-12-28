@@ -41,7 +41,7 @@ class TestClocksSimulton(unittest.IsolatedAsyncioTestCase):
         #
         # wait for the process to actually terminate
         #
-        self._simulton.wait_to_die(2)
+        self._simulton.wait_to_die(6)
         #
         # shut the simulton process
         #
@@ -154,10 +154,10 @@ class TestClocksSimulton(unittest.IsolatedAsyncioTestCase):
         theClockId = next(iter(clocks.keys()))
         # retrieve the theClockId clock
         rdata = self.get_time(theClockId)
-        self.assertEqual(rdata, clocks[theClockId])
+        self.assertEqual(rdata.model_dump(), clocks[theClockId])
         # clock was never started yet
-        assert isinstance(rdata, dict)
-        self.assertEqual(rdata['time'], 0.0)
+        assert isinstance(rdata, ClockResponse)
+        self.assertEqual(rdata.time, 0.0)
 
         # pause it
         assert self._simulton is not None
@@ -172,10 +172,9 @@ class TestClocksSimulton(unittest.IsolatedAsyncioTestCase):
 
         # retrieve the theClockId clock
         rdata = self.get_time(theClockId)
-        assert isinstance(rdata, dict)
-        self.assertTrue(rdata['time'] > 0.0)
-        self.assertTrue(rdata['time'] > duration)
-        log.info(f'I slept for {duration} clock {rdata["time"]}')
+        assert isinstance(rdata, ClockResponse)
+        self.assertGreater(rdata.time, duration)
+        log.info(f'I slept for {duration} clock {rdata.time}')
 
         times = 10
         for _ in range(10):
@@ -188,9 +187,8 @@ class TestClocksSimulton(unittest.IsolatedAsyncioTestCase):
 
         # retrieve the theClockId clock
         rdata = self.get_time(theClockId)
-        self.assertTrue(rdata['time'] > 0.0)
-        self.assertTrue(rdata['time'] > duration)
-        log.info(f'I slept for {duration * (times + 1)} clock {rdata["time"]}')
+        self.assertGreater(rdata.time, duration)
+        log.info(f'I slept for {duration * (times + 1)} clock {rdata.time}')
 
         self.get_nonexistent_clock()
         self.del_nonexistent_clock()
@@ -234,7 +232,7 @@ class TestClocksSimulton(unittest.IsolatedAsyncioTestCase):
             slow_clocks * slow_latency
         )
         log.info(
-            f'clocks: {clocks}, dt: {dt}, sequential_time: {sequential_time}'
+            f'clocks: {clocks}, dt: {dt:.2f}, sequential_time: {sequential_time}'
         )
         #
         # Verify the Clocks are being access in parallel, not sequentially!

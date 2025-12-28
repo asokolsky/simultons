@@ -98,6 +98,23 @@ class SimultonProxy(Simulton):
         self.state = jresp['state']
         return True
 
+    async def async_wait_until_reachable(self) -> bool:
+        """
+        Side-effect: sets the attributes
+        """
+        log.debug('async_wait_until_reachable()...')
+        assert self._launcher is not None
+        jresp = await self._launcher.async_wait_until_reachable(api_simulton)
+        log.debug(f'async_wait_until_reachable({api_simulton}) => {jresp}')
+        assert isinstance(jresp, dict)
+        self.description = jresp['description']
+        self.endpoint = jresp['endpoint']
+        self.rate = jresp['rate']
+        self.title = jresp['title']
+        self.version = jresp['version']
+        self.state = jresp['state']
+        return True
+
     def pause(self) -> bool:
         """
         Send a blocking! request to the simulton to move to the PAUSED state.
@@ -135,7 +152,7 @@ class SimultonProxy(Simulton):
         """
         log.debug('shutdown')
         assert self._launcher is not None
-        self._launcher.wait_to_die(5)
+        self._launcher.wait_to_die(4)
         await self._launcher.shutdown(timeout=1)
         self._launcher = None
         return

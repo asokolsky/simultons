@@ -30,7 +30,7 @@ from .schemas import (
     Tags,
 )
 from .settings import load_settings
-from .wait import wait_until_reachable
+from .wait import async_wait_until_reachable, wait_until_reachable
 from .process_session import ProcessSession
 
 # order is important to avoid circular dependency!
@@ -65,7 +65,6 @@ __all__ = [
     'ProcessSession',
     # restc.py
     'rest_client',
-    'wait_until_reachable',
     # simulton.py
     'Simulton',
     'get_random_id',
@@ -101,4 +100,7 @@ __all__ = [
     'print_logging_tree',
     # __init__.py
     #'get_version',
+    # wait.py
+    'async_wait_until_reachable',
+    'wait_until_reachable',
 ]
