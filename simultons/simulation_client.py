@@ -1,6 +1,7 @@
 """
 Simulation REST client in python
 """
+
 from types import TracebackType
 from typing import Any
 

@@ -49,7 +49,9 @@ def run_simultons_cli(
 
         except subprocess.TimeoutExpired:
             elapsed = time.time() - start
-            log.info(f'Waiting for {popen.pid} timed out after {elapsed:.2f} secs')
+            log.info(
+                f'Waiting for {popen.pid} timed out after {elapsed:.2f} secs'
+            )
             return -1, '', ''
 
     return popen.returncode, stdout_value, stderr_value

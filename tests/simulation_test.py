@@ -117,7 +117,7 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         Returns dict[clockID, ClockResponse]
         """
         tasks = [
-            sc.async_new_collection_item(
+            sc.async_new_item(
                 NewClockParams(
                     name=f'clock-{clock_num}', latency=latency
                 ).model_dump()
@@ -151,7 +151,7 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         """
         assert simulton_client is not None
         start = time.time()
-        rdata = simulton_client.get_collection_item(clock_id)
+        rdata = simulton_client.get_item(clock_id)
         dt = time.time() - start
         assert rdata is not None
         self.assertGreater(dt, latency)
@@ -191,12 +191,8 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(clocks, {})
 
         nonexistent_id = '1234567890'
-        self.assertIsNone(
-            self._simulton_client.get_collection_item(nonexistent_id)
-        )
-        self.assertIsNone(
-            self._simulton_client.del_collection_item(nonexistent_id)
-        )
+        self.assertIsNone(self._simulton_client.get_item(nonexistent_id))
+        self.assertIsNone(self._simulton_client.del_item(nonexistent_id))
         return
 
     async def test_one_simulton(self) -> None:
@@ -235,12 +231,8 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         #
         # verify nonexistent clock access
         #
-        self.assertIsNone(
-            self._simulton_client.get_collection_item(nonexistent_id)
-        )
-        self.assertIsNone(
-            self._simulton_client.del_collection_item(nonexistent_id)
-        )
+        self.assertIsNone(self._simulton_client.get_item(nonexistent_id))
+        self.assertIsNone(self._simulton_client.del_item(nonexistent_id))
         #
         # create few fast clocks
         #
@@ -271,12 +263,8 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         #
         # verify nonexistent clock access
         #
-        self.assertIsNone(
-            self._simulton_client.get_collection_item(nonexistent_id)
-        )
-        self.assertIsNone(
-            self._simulton_client.del_collection_item(nonexistent_id)
-        )
+        self.assertIsNone(self._simulton_client.get_item(nonexistent_id))
+        self.assertIsNone(self._simulton_client.del_item(nonexistent_id))
         #
         # retrieve the clock values
         #
@@ -302,7 +290,7 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self._client.run())
 
         # sleep for a pre-defined period
-        duration = 0.2
+        duration = 0.3
         await asyncio.sleep(duration)
         # retrieve the theClockId clock
         rdata = self.get_time(
@@ -312,7 +300,27 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         self.assertGreater(rdata['time'], duration + fast_latency)
         log.info(f'slept for {duration} secs, clock: {rdata["time"]}')
 
-        # self.assertTrue(self._client.pause())
+        times = 10
+        for _ in range(times):
+            # pause it
+            self.assertTrue(self._client.pause())
+            # start it at normal rate
+            self.assertTrue(self._client.run())
+            # sleep for a pre-defined period
+            await asyncio.sleep(duration)
+
+        # retrieve the theClockId clock
+        rdata = self.get_time(
+            self._simulton_client, theFastClockId, fast_latency
+        )
+        self.assertGreater(rdata['time'], duration)
+        total = (duration + fast_latency) * (times + 1)
+        log.info(f'slept for {total} secs clock {rdata["time"]}')
+
+        self.assertIsNone(self._simulton_client.get_item(nonexistent_id))
+        self.assertIsNone(self._simulton_client.del_item(nonexistent_id))
+
+        self.assertTrue(self._simulton_client.del_item(theFastClockId))
 
         # do something, e.g.:
         #   start running simulation

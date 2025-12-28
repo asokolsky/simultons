@@ -109,7 +109,7 @@ class SimultonClient:
         assert isinstance(rdata, dict)
         return rdata
 
-    def get_collection_item(self, item_id: str) -> dict | None:
+    def get_item(self, item_id: str) -> dict | None:
         """
         Retrieve a specific item from the collection.
         """
@@ -121,7 +121,7 @@ class SimultonClient:
         assert isinstance(rdata, dict)
         return rdata
 
-    def del_collection_item(self, item_id: str) -> dict | None:
+    def del_item(self, item_id: str) -> dict | None:
         """
         Delete a specific item from the collection.
         """
@@ -133,7 +133,7 @@ class SimultonClient:
         assert isinstance(rdata, dict)
         return rdata
 
-    def new_collection_item(self, param: dict) -> tuple[int, Any]:
+    def new_item(self, param: dict) -> tuple[int, Any]:
         """
         Create a new collection item.
         """
@@ -142,7 +142,7 @@ class SimultonClient:
         assert isinstance(rdata, dict)
         return (status_code, rdata)
 
-    async def async_new_collection_item(self, param: dict) -> tuple[int, Any]:
+    async def async_new_item(self, param: dict) -> tuple[int, Any]:
         """
         Create a new collection item.
         """
