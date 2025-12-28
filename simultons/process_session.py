@@ -54,7 +54,7 @@ class ProcessSession:
         """
         Enter the with block, start the CLI session
         """
-        log.info('CliSession.__enter__()')
+        log.debug('CliSession.__enter__()')
         self.popen = subprocess.Popen(
             self.command_line,
             cwd=self.cwd,
@@ -80,7 +80,7 @@ class ProcessSession:
         """
         Handle the exception(s)
         """
-        log.info(
+        log.debug(
             f'CliSession.__exit__({exception_type}, {exception_value}, {exception_traceback})'
         )
         if self.popen is not None:
@@ -138,22 +138,22 @@ class ProcessSession:
             return True
 
         # now wait for the process to complete
-        log.info(f'Waiting for upto {timeout} secs for {self.popen.pid}...')
+        # log.debug(f'Waiting for upto {timeout} secs for {self.popen.pid}...')
         start = time.time()
         try:
             self.popen.wait(timeout)
             # the process has terminated
             elapsed = time.time() - start
-            log.info(
-                f'{self.popen.pid} terminated after {elapsed:.3f} secs, ec: {self.popen.returncode}'
+            log.debug(
+                f'{self.popen.pid} terminated after {elapsed:.2f} secs, ec: {self.popen.returncode}'
             )
             return True
 
         except subprocess.TimeoutExpired:
             elapsed = time.time() - start
-            log.info(
-                f'Waiting for {self.popen.pid} timed out after {elapsed:.3f} secs'
-            )
+            # log.debug(
+            #    f'Waiting for {self.popen.pid} timed out after {elapsed:.2f} secs'
+            # )
         return False
 
     def is_alive(self) -> bool:

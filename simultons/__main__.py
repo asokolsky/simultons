@@ -18,6 +18,8 @@ from . import (
     NewSimultonParams,
     SimulationClient,
     SimulationRequest,
+    SimulationResponse,
+    SimultonResponse,
     api_simulation,
     api_simultons,
     module_version,
@@ -33,6 +35,7 @@ def eprint(*args: Any) -> None:
 class SimultonsShell(cmd2.Cmd):
     def __init__(self, client: SimulationClient) -> None:
         super().__init__(completekey='tab')
+        self.prompt = '\n> '
         self._client = client
         return
 
@@ -41,7 +44,7 @@ class SimultonsShell(cmd2.Cmd):
         Get the simulation
         """
         simulation = self._client.get_simulation()
-        assert simulation is not None
+        assert isinstance(simulation, SimulationResponse)
         self.poutput(json.dumps(simulation.model_dump(), indent=2))
         return
 
@@ -54,7 +57,7 @@ class SimultonsShell(cmd2.Cmd):
             arg = SimulationRequest.model_validate_json(args)
             # self.poutput(json.dumps(arg.model_dump(), indent=2))
             simulation = self._client.put_simulation(arg)
-            assert simulation is not None
+            assert isinstance(simulation, SimulationResponse)
             self.poutput(json.dumps(simulation.model_dump(), indent=2))
 
         except ValidationError:
@@ -67,11 +70,12 @@ class SimultonsShell(cmd2.Cmd):
         """
         if not args:
             sims = self._client.get_simultons()
-            assert sims is not None
-            self.poutput(json.dumps(sims, indent=2))
+            assert isinstance(sims, dict)
+            js = {k: v.model_dump() for k, v in sims.items()}
+            self.poutput(json.dumps(js, indent=2))
         else:
             sim = self._client.get_simulton(args)
-            assert sim is not None
+            assert isinstance(sim, SimultonResponse)
             self.poutput(json.dumps(sim.model_dump(), indent=2))
         return
 
