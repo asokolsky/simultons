@@ -345,6 +345,7 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         To watch the simulton processes:
             1. use `ps` or `echo $$` to identify the pid of the shell;
             2. then `watch -c -n 0.1 pstree -p <shell-pid> -Ut`
+            on MacOS `watch -c -n 0.1 pstree -p 65673 -g 3`
         """
         N = 15
 

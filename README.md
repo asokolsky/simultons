@@ -126,7 +126,7 @@ reveals the packages `FastAPI` and `pyzmq` rely upon:
 
 To run all:
 ```sh
-make tests
+mise tests
 ```
 
 To run one unit test file:
@@ -145,11 +145,15 @@ fastapi run simultons/simulation.py
 To watch the simulton processes:
 
 1. use `ps` or better yet `echo $$` to identify the pid of the shell;
-2. e.g. run `make tests`
+2. e.g. run `mise tests`
 2. in another shell
 
 ```sh
 watch -c -n 0.1 pstree -p <pid> -Ut
+```
+or on MacOS:
+```sh
+watch -c -n 0.1 pstree -p <pid> -g 3
 ```
 
 ## Troubleshooting

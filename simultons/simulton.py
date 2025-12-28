@@ -40,7 +40,8 @@ log = setup_logging(__name__)
 
 def get_random_id() -> str:
     length = 8
-    return ''.join(random.choice(string.ascii_lowercase) for _ in range(length))  # noqa: S311
+    chars = string.ascii_letters + string.digits
+    return ''.join(random.choice(chars) for _ in range(length))  # noqa: S311
 
 
 async def shut_the_process() -> None:

@@ -40,8 +40,9 @@ class SimultonsShell(cmd2.Cmd):
         """
         Get the simulation
         """
-        js = self._client.get_simulation()
-        self.poutput(json.dumps(js, indent=2))
+        simulation = self._client.get_simulation()
+        assert simulation is not None
+        self.poutput(json.dumps(simulation.model_dump(), indent=2))
         return
 
     def do_simulation_put(self, args: str) -> None:
@@ -52,8 +53,9 @@ class SimultonsShell(cmd2.Cmd):
         try:
             arg = SimulationRequest.model_validate_json(args)
             # self.poutput(json.dumps(arg.model_dump(), indent=2))
-            js = self._client.put_simulation(arg)
-            self.poutput(json.dumps(js, indent=2))
+            simulation = self._client.put_simulation(arg)
+            assert simulation is not None
+            self.poutput(json.dumps(simulation.model_dump(), indent=2))
 
         except ValidationError:
             self.perror(f"Error: '{args}' is not a SimulationRequest.")
@@ -64,7 +66,9 @@ class SimultonsShell(cmd2.Cmd):
         Get all or just one simulton
         """
         if not args:
-            self.poutput(json.dumps(self._client.get_simultons(), indent=2))
+            sims = self._client.get_simultons()
+            assert sims is not None
+            self.poutput(json.dumps(sims, indent=2))
         else:
             sim = self._client.get_simulton(args)
             assert sim is not None
@@ -79,8 +83,9 @@ class SimultonsShell(cmd2.Cmd):
         try:
             arg = NewSimultonParams.model_validate_json(args)
             # self.poutput(json.dumps(arg.model_dump(), indent=2))
-            js = self._client.post_simulton(arg)
-            self.poutput(json.dumps(js, indent=2))
+            res = self._client.post_simulton(arg)
+            assert res is not None
+            self.poutput(json.dumps(res.model_dump(), indent=2))
 
         except ValidationError:
             self.perror(f"Error: '{args}' is not a NewSimultonParams.")
