@@ -14,3 +14,7 @@ The building has multiple floors and >=1 elevator shaft(s).  Each floor has a
 has a single [elevator](elevator.md).  There are [rider](rider.md)s who use
 elevators by interacting first with a floor panel and then with the elevator
 they ride.
+
+## async programming
+
+I found this intriguing: [mikeshardmind/async-utils](https://github.com/mikeshardmind/async-utils).
