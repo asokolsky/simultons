@@ -10,6 +10,7 @@ log = setup_logging(__name__)
 
 timeout = 0.1
 
+
 def run_simultons_cli(
     args: list[str] = [], timeout: float = 10.0, cmds: list[str] = []
 ) -> tuple[int, str, str]:
@@ -124,8 +125,8 @@ class TestCLI(unittest.TestCase):
                 cmd1 = cmd
                 while not session.wait(timeout):
                     stdout, stderr = session.consume_outputs(cmd1)
-                    #log.debug('out: %s', stdout)
-                    #log.debug('err: %s', stderr)
+                    # log.debug('out: %s', stdout)
+                    # log.debug('err: %s', stderr)
                     if stdout.endswith('\n'):
                         log.debug('Proceeding...')
                         break

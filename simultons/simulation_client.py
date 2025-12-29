@@ -2,6 +2,8 @@
 Simulation REST client in python
 """
 
+import asyncio
+import time
 from types import TracebackType
 from typing import Any
 
@@ -13,11 +15,12 @@ from simultons import (
     SimulationRequest,
     SimulationResponse,
     SimulationState,
+    SimultonClient,
     SimultonResponse,
     api_simulation,
     api_simultons,
     async_rest_client,
-    load_settings,
+    load_yaml,
     rest_client,
     setup_logging,
 )
@@ -33,7 +36,8 @@ class SimulationClient:
     def __init__(self, fname: str = 'settings.yaml') -> None:
         log.debug(f'SimulationClient: {fname}')
         self._launcher: FastLauncher | None = None
-        self._settings = load_settings(fname)
+        # TODO: verify settings schema
+        self._settings = load_yaml(fname)
         log.debug(f'SimulationClient: {self._settings}')
         return
 
@@ -186,7 +190,8 @@ class SimulationClient:
             api_simultons, params.model_dump()
         )
         assert status_code == 201
-        assert isinstance(rdata, dict)
+        if status_code != 201:
+            return None
         # rdata looks like
         # {
         #     'description': '',
@@ -242,3 +247,36 @@ class SimulationClient:
             return SimultonResponse(**rdata)
         log.info(f'get_simulton({id}) failed - {status_code}')
         return None
+
+    async def load_simulton(self, sim: dict) -> SimultonClient | None:
+        """
+        Load the simulton from dict, which comes from a YAML file.
+        """
+        instances = sim.get('instances', [])
+        src_path = sim.get('src_path')
+        if src_path is None:
+            log.warning(f'load_simulton: missing `src_path` in {sim}')
+            return None
+        resp = self.post_simulton(NewSimultonParams(src_path=src_path))
+        log.debug(f'load_simulton: created {resp}')
+        assert resp is not None
+        client = SimultonClient(resp)
+        if instances:
+            await client.new_items(instances)
+        return client
+
+    async def load_simultons(self, sims: dict) -> list[SimultonClient | None]:
+        """
+        Load simultons from dict, which comes from a YAML file.
+        """
+        log.debug(f'load_simultons: {sims}')
+        params = sims.get('simultons', [])
+        if not params:
+            log.warning(f'load_simultons: missing `simultons` in {sims}')
+            return []
+        tasks = [self.load_simulton(param) for param in params]
+        start = time.time()
+        res = await asyncio.gather(*tasks)
+        dt = time.time() - start
+        log.info(f'Created {len(res)} simultons in {dt:.2f} secs')
+        return res

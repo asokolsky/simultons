@@ -24,7 +24,7 @@ from . import (
     SimultonResponse,
     Tags,
     Message,
-    load_settings,
+    load_yaml,
     setup_logging,
     shut_the_process,
 )
@@ -60,7 +60,7 @@ class Simulation:
         # NOTE: do NOT use _simultons to iterate and communicate with simultons
         # instead use _zsocket to broadcast the update to all the simultons
         self._simultons: dict[int, SimultonProxy] = {}
-        settings = load_settings()
+        settings = load_yaml('settings.yaml')
         log.debug(f'settings: {settings}')
         assert isinstance(settings, dict)
         sim_settings = settings['simulation']

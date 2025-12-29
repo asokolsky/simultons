@@ -1,0 +1,19 @@
+#
+# This file declares some simultons (classes) and instances
+#
+version: 1
+simultons:
+  - src_path: simultons/clock.py
+    instances:
+      - name: clock-foo
+        latency: 0
+      - name: clock-bar
+        latency: 0.1
+      - name: clock-baz
+        latency: 0.2
+  - src_path: simultons/clock.py
+    instances:
+      - name: clock-A
+        latency: 0.3
+      - name: clock-B
+        latency: 0.4

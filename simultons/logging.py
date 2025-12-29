@@ -13,20 +13,20 @@ import yaml
 logging_config: dict | None = None
 
 
-def load_logging_config(logging_config_path: str) -> dict | None:
+def load_yaml(fpath: str) -> dict | None:
     """
-    Load logging config from `logging.yaml`
+    Load a YAML file and return as dict
     """
-    # print('load_logging_config', logging_config_path)
-    path = Path(logging_config_path)
+    # print('load_yaml', fpath)
+    path = Path(fpath)
     with path.open('r') as file:
         try:
             config = yaml.safe_load(file.read())
             assert isinstance(config, dict)
-            # print('load_logging_config', config)
+            # print('load_yaml', config)
             return config
         except FileNotFoundError:
-            print(f'Error: logging settings {path} not found.')
+            print(f'Error: file {path} not found.')
         except yaml.YAMLError as err:
             print(f'Error: parsing {path}: {err}')
     return None
@@ -44,13 +44,9 @@ def setup_logging(
     global logging_config
     if logging_config_path is None:
         logging_config_path = 'logging.yaml'
-        load_config = logging_config is None
-    else:
-        load_config = True
-    if load_config:
-        # parent_dir = Path(__file__).absolute().parents[1]
-        # logging_config_path = parent_dir / 'logging.yaml'
-        logging_config = load_logging_config(logging_config_path)
+    # parent_dir = Path(__file__).absolute().parents[1]
+    # logging_config_path = parent_dir / 'logging.yaml'
+    logging_config = load_yaml(logging_config_path)
     # repetitive calls can be useful
     if logging_config is None:
         # set the defaults

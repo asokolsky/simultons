@@ -3,7 +3,8 @@ Playing with FastAPI, pydantic while simulating stuff
 """
 
 # ruff: noqa: I001
-from .logging import setup_logging, print_logging_tree
+from .logging import setup_logging, print_logging_tree, load_yaml
+
 from .arestc import async_rest_client
 from .restc import rest_client
 from .globals import (
@@ -29,7 +30,6 @@ from .schemas import (
     SimultonResponse,
     Tags,
 )
-from .settings import load_settings
 from .wait import async_wait_until_reachable, wait_until_reachable
 from .process_session import ProcessSession
 
@@ -89,13 +89,12 @@ __all__ = [
     'SimulationState',
     'theSimulation',
     'SimultonProxy',
-    # settings.py
-    'load_settings',
     # simulation_client.py
     'SimulationClient',
     # simulton_client.py
     'SimultonClient',
     # logging.py
+    'load_yaml',
     'setup_logging',
     'print_logging_tree',
     # __init__.py

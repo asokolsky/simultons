@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import suppress
 from typing import Any
 
@@ -78,12 +79,12 @@ class SimultonClient:
         assert res is not None
         return
 
-    def get_simulton(self) -> SimultonResponse:
+    async def get_simulton(self) -> SimultonResponse:
         """
         Retrieve the SimultonResponse
         """
-        assert self._restc is not None
-        (status_code, rdata) = self._restc.get(api_simulton)
+        assert self._arestc is not None
+        (status_code, rdata) = await self._arestc.get(api_simulton)
         assert status_code == 200
         log.debug(f'SimultonClient.get_simulton() => {rdata}')
 
@@ -99,52 +100,52 @@ class SimultonClient:
         assert self._version == rdata['version']
         return SimultonResponse(**rdata)
 
-    def get_collection(self) -> dict[str, dict]:
+    async def get_collection(self) -> dict[str, dict]:
         """
         Retrieve the collection of objects from the Simulton service.
         """
-        assert self._restc is not None
-        (status_code, rdata) = self._restc.get(self._endpoint)
+        assert self._arestc is not None
+        (status_code, rdata) = await self._arestc.get(self._endpoint)
         assert status_code == 200
         assert isinstance(rdata, dict)
         return rdata
 
-    def get_item(self, item_id: str) -> dict | None:
+    async def get_item(self, item_id: str) -> dict | None:
         """
         Retrieve a specific item from the collection.
         """
-        assert self._restc is not None
-        (status_code, rdata) = self._restc.get(f'{self._endpoint}/{item_id}')
+        assert self._arestc is not None
+        uri = f'{self._endpoint}/{item_id}'
+        (status_code, rdata) = await self._arestc.get(uri)
         if status_code == 404:
             return None
         assert status_code == 200
         assert isinstance(rdata, dict)
         return rdata
 
-    def del_item(self, item_id: str) -> dict | None:
+    async def del_item(self, item_id: str) -> dict | None:
         """
         Delete a specific item from the collection.
         """
-        assert self._restc is not None
-        (status_code, rdata) = self._restc.delete(f'{self._endpoint}/{item_id}')
+        assert self._arestc is not None
+        uri = f'{self._endpoint}/{item_id}'
+        (status_code, rdata) = await self._arestc.delete(uri)
         if status_code == 404:
             return None
         assert status_code == 200
         assert isinstance(rdata, dict)
         return rdata
 
-    def new_item(self, param: dict) -> tuple[int, Any]:
-        """
-        Create a new collection item.
-        """
-        assert self._restc is not None
-        (status_code, rdata) = self._restc.post(self._endpoint, param)
-        assert isinstance(rdata, dict)
-        return (status_code, rdata)
-
-    async def async_new_item(self, param: dict) -> tuple[int, Any]:
+    async def new_item(self, param: dict) -> tuple[int, Any]:
         """
         Create a new collection item.
         """
         assert self._arestc is not None
         return await self._arestc.post(self._endpoint, param)
+
+    async def new_items(self, params: list[dict]) -> list[tuple[int, Any]]:
+        """
+        Create a new collection item.
+        """
+        tasks = [self.new_item(param) for param in params]
+        return await asyncio.gather(*tasks)

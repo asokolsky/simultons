@@ -33,6 +33,7 @@ class ClockResponse(BaseModel):
     id: str
     name: str
     time: float
+    latency: float
 
 
 class Message(BaseModel):

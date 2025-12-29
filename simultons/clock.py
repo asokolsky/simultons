@@ -89,7 +89,9 @@ class Clock:
         if self._latency != 0.0:
             # time.sleep(self._latency)
             await asyncio.sleep(self._latency)
-        return ClockResponse(id=self._id, name=self._name, time=self.time)
+        return ClockResponse(
+            id=self._id, name=self._name, time=self.time, latency=self._latency
+        )
 
 
 class ClocksSimulton(Simulton):

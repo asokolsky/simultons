@@ -22,6 +22,7 @@ from . import (
     SimultonResponse,
     api_simulation,
     api_simultons,
+    load_yaml,
     module_version,
     # print_logging_tree,
     setup_logging,
@@ -37,6 +38,8 @@ class SimultonsShell(cmd2.Cmd):
         super().__init__(completekey='tab')
         self.prompt = '\n> '
         self._client = client
+        self._loop = asyncio.get_running_loop()
+        print(f'self._loop: {self._loop}')
         return
 
     def do_simulation_get(self, _: str) -> None:
@@ -74,6 +77,7 @@ class SimultonsShell(cmd2.Cmd):
             js = {k: v.model_dump() for k, v in sims.items()}
             self.poutput(json.dumps(js, indent=2))
         else:
+            # call a coroutine from this routine
             sim = self._client.get_simulton(args)
             assert isinstance(sim, SimultonResponse)
             self.poutput(json.dumps(sim.model_dump(), indent=2))
@@ -147,6 +151,11 @@ async def main() -> int:
         action='store_true',
         help='Display module version and exit.',
     )
+    ap.add_argument(
+        '--apply',
+        type=existing_file_path,
+        help='Apply the definitions from this YAML file.',
+    )
     args = ap.parse_args()
     if args.version:
         print(module_version)
@@ -163,6 +172,11 @@ Simultons API: {url}{api_simultons}
 Docs: {url}/docs"""
 
         try:
+            if args.apply is not None:
+                to_apply = load_yaml(args.apply)
+                if to_apply is not None:
+                    await client.load_simultons(to_apply)
+
             SimultonsShell(client).cmdloop(intro=intro)
         except KeyboardInterrupt:
             print('exiting')
@@ -170,4 +184,4 @@ Docs: {url}/docs"""
 
 
 if __name__ == '__main__':
-    sys.exit(asyncio.run(main()))
+    sys.exit(asyncio.run(main(), debug=True))
