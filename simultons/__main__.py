@@ -38,8 +38,7 @@ class SimultonsShell(cmd2.Cmd):
         super().__init__(completekey='tab')
         self.prompt = '\n> '
         self._client = client
-        self._loop = asyncio.get_running_loop()
-        print(f'self._loop: {self._loop}')
+        # self._loop = asyncio.get_running_loop()
         return
 
     def do_simulation_get(self, _: str) -> None:
