@@ -37,5 +37,7 @@
             "path": "zsh", // works with "bash" too
             "args": ["-c", "source .venv/bin/activate; zsh -i"]
         }
-    }
+    },
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python-envs.pythonProjects": []
 }

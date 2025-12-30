@@ -3,7 +3,7 @@ name = "simultons"
 version = "0.1.0"
 description = "Just playing with elevator simulation."
 readme = "README.md"
-requires-python = "==3.13"
+requires-python = "==3.13.*"
 dependencies = [
     "cmd2>=2.7.0",
     "fastapi-utils>=0.8.0",
