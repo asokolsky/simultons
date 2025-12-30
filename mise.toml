@@ -6,7 +6,7 @@ uv = 'latest'
 [tasks.clean]
 description = "Do local clean-up"
 run = [
-    'rm -rf .mypy_cache .ruff_cache .venv',
+    'rm -rf .mypy_cache .ruff_cache .venv uv.lock',
     'find . -name __pycache__ | xargs rm -rf'
 ]
 

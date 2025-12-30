@@ -3,6 +3,7 @@
 simulation_zspec = 'ipc:///tmp/sss'
 simulation_ztopic = 'simulation'
 
+# keep this in sync with the one in pyproject.toml
 module_version = '0.2.0'
 
 api_simulation = '/api/v1/simulation'

@@ -21,6 +21,7 @@ from . import (
     SimulationResponse,
     SimultonResponse,
     api_simulation,
+    api_simulton,
     api_simultons,
     load_yaml,
     module_version,
@@ -91,7 +92,15 @@ class SimultonsShell(cmd2.Cmd):
             arg = NewSimultonParams.model_validate_json(args)
             # self.poutput(json.dumps(arg.model_dump(), indent=2))
             res = self._client.post_simulton(arg)
-            assert res is not None
+            assert isinstance(res, SimultonResponse)
+            message = f"""
+
+New simulton API: http://127.0.0.1:{res.port}{api_simulton}
+New {res.title} API: http://127.0.0.1:{res.port}{res.endpoint}
+Docs: http://127.0.0.1:{res.port}/docs
+
+"""
+            self.poutput(message)
             self.poutput(json.dumps(res.model_dump(), indent=2))
 
         except ValidationError:

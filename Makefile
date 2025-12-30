@@ -39,7 +39,7 @@ mypy:									## Check typing
 	uv run mypy simultons tests
 
 clean:									## Cleanup the artifacts
-	rm -rf $(VENV) .mypy_cache .ruff_cache
+	rm -rf $(VENV) .mypy_cache .ruff_cache uv.lock
 	find . -name __pycache__ | xargs rm -rf
 
 DOCKER_USERNAME ?= john.doe

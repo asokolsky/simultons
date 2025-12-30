@@ -1,6 +1,7 @@
 [project]
 name = "simultons"
-version = "0.1.0"
+# keep this in sync with the one in simultons/globals.py
+version = "0.2.0"
 description = "Just playing with elevator simulation."
 readme = "README.md"
 requires-python = "==3.13.*"
