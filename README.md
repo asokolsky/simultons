@@ -40,22 +40,32 @@ The building has multiple floors and >=1 elevator shaft(s).  Each floor has a [f
 
 For now, the play is limited to running unit tests - see blow.
 
-## Prerequisites
+## Prerequisites and Toolchain
 
 * python
+* [mise](https://mise.jdx.dev/getting-started.html).
+* Establish trust: `mise trust`.
+* Install the rest of the toolchain with `mise install` - you can expect to see complain about `mypy`.
+* I also had to `sudo apt install libncurses-dev`
+
+These are installed by `mise`:
 * [uv](https://github.com/astral-sh/uv)
 * [ZeroMQ](https://zeromq.org/)
+
+By now you should be able to run regressiont ests:
+```sh
+mise tests
+```
 
 ### ZeroMQ
 
 Follow [documentation](https://zeromq.org/download/) to install:
 
-For MacOS:
+* on MacOS:
 ```sh
 brew install zeromq
 ```
-
-For Linux:
+* on Linux:
 ```sh
 sudo apt-get install libzmq3-dev
 ```
@@ -80,7 +90,7 @@ Current  pyzmq version is 26.2.0
 
 ### Python Dependencies
 
-..are handled via virtual environment using `uv`:
+Python dependencies are handled via virtual environment using `mise` and `uv`:
 
 `pydeps fastapi` gives:
 
@@ -136,18 +146,15 @@ To run one unit test file:
 
 ## How to use it
 
-TBD
-
 ```sh
-fastapi run simultons/simulation.py
+mise sim
 ```
 
 To watch the simulton processes:
 
-1. use `ps` or better yet `echo $$` to identify the pid of the shell;
-2. e.g. run `mise tests`
-2. in another shell
-
+1. use `echo $$` to identify the pid of the shell;
+2. run, e.g. `mise tests`
+3. in another shell
 ```sh
 watch -c -n 0.1 pstree -p <pid> -Ut
 ```
