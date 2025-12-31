@@ -19,6 +19,7 @@ Sample usage:
 
 """
 
+import asyncio
 import os
 import subprocess
 import time
@@ -54,7 +55,7 @@ class ProcessSession:
         """
         Enter the with block, start the CLI session
         """
-        log.debug('CliSession.__enter__()')
+        log.debug('ProcessSession.__enter__()')
         self.popen = subprocess.Popen(
             self.command_line,
             cwd=self.cwd,
@@ -63,8 +64,10 @@ class ProcessSession:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            bufsize=1,
         )
         assert self.popen is not None
+        log.debug(f'pid:{self.popen.pid} args:{self.popen.args}')
         assert self.popen.stdout is not None
         assert self.popen.stderr is not None
         os.set_blocking(self.popen.stdout.fileno(), False)
@@ -81,7 +84,7 @@ class ProcessSession:
         Handle the exception(s)
         """
         log.debug(
-            f'CliSession.__exit__({exception_type}, {exception_value}, {exception_traceback})'
+            f'ProcessSession.__exit__({exception_type}, {exception_value}, {exception_traceback})'
         )
         if self.popen is not None:
             # close the pipes
@@ -99,7 +102,8 @@ class ProcessSession:
 
     def consume_outputs(self, line: str) -> tuple[str, str]:
         """
-        Get all the stdout and stderr that is there
+        Feed line (if non-empty) into the process' stdin,
+        get all the stdout and stderr that is there
         """
 
         assert self.popen is not None
@@ -135,6 +139,7 @@ class ProcessSession:
 
         assert self.popen is not None
         if self.popen.returncode is not None:
+            log.debug(f'wait({timeout}) -> True, ec:{self.popen.returncode}')
             return True
 
         # now wait for the process to complete
@@ -158,3 +163,87 @@ class ProcessSession:
 
     def is_alive(self) -> bool:
         return self.popen is not None and self.popen.returncode is None
+
+
+class AsyncProcessSession:
+    """
+    Run the cli session.
+    """
+
+    def __init__(self, command_line: list[str]) -> None:
+        self.popen: asyncio.subprocess.Process | None = None
+        self.command_line = command_line
+        return
+
+    async def __aenter__(self) -> 'AsyncProcessSession':
+        """
+        Enter the with block, start the process session
+        """
+        log.debug('AsyncProcessSession.__aenter__()')
+        self.process = await asyncio.subprocess.create_subprocess_exec(
+            self.command_line[0],
+            *self.command_line[1:],
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        assert self.process is not None
+        assert self.process.stdout is not None
+        assert self.process.stderr is not None
+        log.debug(f'self.process.pid: {self.process.pid}')
+        return self
+
+    async def __aexit__(
+        self,
+        exception_type: type[BaseException] | None,
+        exception_value: BaseException | None,
+        exception_traceback: TracebackType | None,
+    ) -> None:
+        """
+        Handle the exception(s) / clean-up
+        """
+        log.debug(
+            f'AsyncProcessSession.__aexit__({exception_type}, {exception_value}, {exception_traceback})'
+        )
+        if self.process is not None:
+            # wait for the process to complete
+            await self.process.wait()
+        return
+
+    async def consume_outputs(self, line: str) -> tuple[str, str]:
+        """
+        Feed line (if non-empty) into the process' stdin,
+        get all the stdout and stderr that is there
+        """
+
+        assert self.process is not None
+        assert self.process.stdin is not None
+        if line:
+            if not line.endswith('\n'):
+                line += '\n'
+            self.process.stdin.write(line.encode('utf-8'))
+            await self.process.stdin.drain()
+
+        # retrieve stdout and stderr
+        assert self.process.stdout is not None
+        assert self.process.stderr is not None
+        stdout_task = asyncio.create_task(self.process.stdout.read(1024))
+        stderr_task = asyncio.create_task(self.process.stderr.read(1024))
+        # Wait for the first task to complete
+        done, pending = await asyncio.wait(
+            {stdout_task, stderr_task}, return_when=asyncio.FIRST_COMPLETED
+        )
+        done_task = done.pop()
+        stdout = stderr = ''
+        if done_task == stdout_task:
+            stdout = stdout_task.result().decode('utf-8')
+            stderr_task.cancel()
+        else:
+            stderr = stderr_task.result().decode('utf-8')
+            stdout_task.cancel()
+
+        # log.debug(f'consume_outputs("{line}") -> "{stdout}","{stderr}"')
+        return stdout, stderr
+
+    def is_alive(self) -> bool:
+        return self.process is not None and self.process.returncode is None

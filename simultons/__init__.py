@@ -31,7 +31,7 @@ from .schemas import (
     Tags,
 )
 from .wait import async_wait_until_reachable, wait_until_reachable
-from .process_session import ProcessSession
+from .process_session import AsyncProcessSession, ProcessSession
 
 # order is important to avoid circular dependency!
 from .fast_launcher import FastLauncher
@@ -63,6 +63,7 @@ __all__ = [
     'app',
     # process_session.py
     'ProcessSession',
+    'AsyncProcessSession',
     # restc.py
     'rest_client',
     # simulton.py

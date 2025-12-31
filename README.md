@@ -156,7 +156,7 @@ To watch the simulton processes:
 2. run, e.g. `mise tests`
 3. in another shell
 ```sh
-watch -c -n 0.1 pstree -p <pid> -Ut
+watch -c -n 0.1 pstree -p <pid> -Uta
 ```
 or on MacOS:
 ```sh
