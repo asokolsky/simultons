@@ -13,10 +13,11 @@ class TestModuleVersion(unittest.TestCase):
     """
 
     def test_version(self) -> None:
+        log.info('test_version')
         repo_root = Path(__file__).absolute().parents[1]
-        file_path = repo_root / 'pyproject.toml'
-        self.assertTrue(file_path.is_file())
-        with file_path.open("rb") as f:
+        pyproject_path = repo_root / 'pyproject.toml'
+        self.assertTrue(pyproject_path.is_file())
+        with pyproject_path.open('rb') as f:
             data = tomllib.load(f)
             self.assertIsInstance(data, dict)
             version = data['project']['version']
