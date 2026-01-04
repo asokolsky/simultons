@@ -1,5 +1,6 @@
 """
-Clocks simulton
+Clocks simulton.
+The library does NOT import this file to avoid creating a FastAPI app global.
 """
 
 import asyncio

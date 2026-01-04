@@ -40,7 +40,8 @@ from .simulton_proxy import SimultonProxy
 from .simulton_client import SimultonClient
 from .simulation import Simulation, theSimulation
 from .simulation_client import SimulationClient
-from .clock import Clock
+# do not import Clock to avoid creating FastAPI app.
+# from .clock import Clock
 
 __version__ = module_version
 
@@ -56,7 +57,7 @@ __all__ = [
     # arestc.py
     'async_rest_client',
     # clock.py
-    'Clock',
+    # 'Clock',
     # fast_launcher.py
     'FastLauncher',
     # elevator_simulton.py
