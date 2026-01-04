@@ -17,6 +17,7 @@
         "starlette",
         "uvicorn",
         "venv",
+        "waitable",
         "zcontext",
         "zsocket",
         "ztopic"
