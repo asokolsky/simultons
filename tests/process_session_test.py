@@ -5,12 +5,7 @@ from simultons import AsyncProcessSession, ProcessSession, setup_logging
 log = setup_logging(__name__)
 
 command = ['.venv/bin/python3', 'tests/cmd2_hello.py']
-input_lines = [
-    'hello_world',
-    'async_wait',
-    'hi',
-    'quit'
-]
+input_lines = ['hello_world', 'async_wait', 'hi', 'quit']
 
 
 class TestProcessSession(unittest.TestCase):

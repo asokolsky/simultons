@@ -4,21 +4,24 @@ Run the simulation and possibly some simultons like this:
 """
 
 import asyncio
+import concurrent.futures
 import json
 import logging
 import sys
+import threading
 from argparse import ArgumentParser, ArgumentTypeError, RawTextHelpFormatter
 from pathlib import Path
 from typing import Any
 
 import cmd2
-from pydantic import ValidationError
+from pydantic import ValidationError, validate_call
 
 from . import (
     NewSimultonParams,
     SimulationClient,
     SimulationRequest,
     SimulationResponse,
+    SimultonClient,
     SimultonResponse,
     api_simulation,
     api_simulton,
@@ -34,12 +37,35 @@ def eprint(*args: Any) -> None:
     print(*args, file=sys.stderr)
 
 
+_event_loop = None
+_event_lock = threading.Lock()
+
+
+def run_async(coro) -> concurrent.futures.Future:
+    """Await a coroutine from a synchronous function/method."""
+
+    global _event_loop
+
+    if _event_loop is None:
+        with _event_lock:
+            if _event_loop is None:
+                _event_loop = asyncio.new_event_loop()
+                thread = threading.Thread(
+                    target=_event_loop.run_forever,
+                    name='Async Runner',
+                    daemon=True,
+                )
+                thread.start()
+
+    return asyncio.run_coroutine_threadsafe(coro, _event_loop)
+
+
 class SimultonsShell(cmd2.Cmd):
     def __init__(self, client: SimulationClient) -> None:
         super().__init__(completekey='tab')
         self.prompt = '\n> '
         self._client = client
-        # self._loop = asyncio.get_running_loop()
+        self._simulton_client: dict[int, SimultonClient] = {}
         return
 
     def do_simulation_get(self, _: str) -> None:
@@ -100,11 +126,29 @@ New {res.title} API: http://127.0.0.1:{res.port}{res.endpoint}
 Docs: http://127.0.0.1:{res.port}/docs
 
 """
-            self.poutput(message)
+            self.pfeedback(message)
             self.poutput(json.dumps(res.model_dump(), indent=2))
+            # save the SimultonClient for the newly created simulton
+            assert isinstance(res.port, int)
+            self._simulton_client[res.port] = SimultonClient(res)
 
         except ValidationError:
             self.perror(f"Error: '{args}' is not a NewSimultonParams.")
+        return
+
+    @validate_call
+    def do_simulton_get(self, port: int) -> None:
+        """
+        Retrieve the simulton state using the saved SimultonClient
+        e.g. `simulton_get 9110`
+        """
+        simulton_client = self._simulton_client.get(port, None)
+        if simulton_client is None:
+            self.perror(f'No simulton on port {port}')
+        else:
+            waitable = run_async(simulton_client.get_simulton())
+            res = waitable.result()
+            self.poutput(json.dumps(res.model_dump(), indent=2))
         return
 
 
