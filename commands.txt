@@ -1,8 +1,17 @@
 set debug true
+set feedback_to_output true
 simulation_put {"state":"RUNNING","rate":1.0}
 
 simultons_post {"src_path":"simultons/clock.py"}
-simultons_post {"src_path":"simultons/building/elevator.py"}
+simulton_get 9110
+simulton_get_items 9110
+simulton_new_item 9110 {"name": "clock-A", "latency": 0.1}
+simulton_new_item 9110 {"name": "clock-B", "latency": 0.2}
+# simulton_get_item 9110 clock-A
+# simulton_del_item 9110 clock-A
+simulton_get_items 9110
 
+simultons_post {"src_path":"simultons/building/elevator.py"}
+simulton_get 9111
 simulation_put {"state":"SHUTTING","rate":1.0}
 quit

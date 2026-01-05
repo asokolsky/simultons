@@ -100,9 +100,9 @@ class SimultonClient:
         assert self._version == rdata['version']
         return SimultonResponse(**rdata)
 
-    async def get_collection(self) -> dict[str, dict]:
+    async def get_items(self) -> dict[str, dict]:
         """
-        Retrieve the collection of objects from the Simulton service.
+        Retrieve the collection of items from the simulton.
         """
         assert self._arestc is not None
         (status_code, rdata) = await self._arestc.get(self._endpoint)
@@ -136,14 +136,15 @@ class SimultonClient:
         assert isinstance(rdata, dict)
         return rdata
 
-    async def new_item(self, param: dict) -> tuple[int, Any]:
+    async def new_item(self, param: dict) -> dict | None:
         """
         Create a new collection item.
         """
         assert self._arestc is not None
-        return await self._arestc.post(self._endpoint, param)
+        (status_code, rdata) = await self._arestc.post(self._endpoint, param)
+        return rdata if status_code == 201 else None
 
-    async def new_items(self, params: list[dict]) -> list[tuple[int, Any]]:
+    async def new_items(self, params: list[dict]) -> list[dict | None]:
         """
         Create a new collection item.
         """

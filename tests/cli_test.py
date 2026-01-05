@@ -77,6 +77,25 @@ def del_commands_file(name: str) -> None:
     return
 
 
+#
+# Commands to be fed to the simultons CLI shell
+#
+cmds = [
+    'set debug true',
+    'set feedback_to_output true',
+    'simulation_get',
+    'simultons_post  {"src_path":"simultons/clock.py"}',
+    'simulton_get 9110',
+    'simultons_get 9110',
+    # 'simulton_new_item 9110 {"name": "clock-A", "latency": 0.1}'
+    # 'simulton_new_item 9110 {"name": "clock-B", "latency": 0.2}'
+    'simulton_get_items 9110',
+    #'simultons_post  {"src_path":"simultons/building/elevator.py"}',
+    'simultons_get',
+    'quit',
+]
+
+
 class TestCLI(unittest.TestCase):
     """
     Verify simultons CLI
@@ -88,18 +107,10 @@ class TestCLI(unittest.TestCase):
         # print('out:', out)
         # print('err:', err)
         self.assertEqual(out.strip(), __version__)
-        self.assertTrue(err, __version__)
+        self.assertTrue(err)
         return
 
     def test_basic(self) -> None:
-        cmds = [
-            'set debug true',
-            'simulation_get',
-            'simultons_post  {"src_path":"simultons/clock.py"}',
-            #'simultons_post  {"src_path":"simultons/building/elevator.py"}',
-            'simultons_get',
-            'quit',
-        ]
         ec, out, err = run_simultons_cli(cmds=cmds)
         self.assertEqual(ec, 0)
         # print('out:', out)
@@ -113,13 +124,6 @@ class TestCLI(unittest.TestCase):
 
         command = ['.venv/bin/python3', '-m', 'simultons']
         with ProcessSession(command) as session:
-            cmds = [
-                'set debug true',
-                'simulation_get',
-                'simultons_post  {"src_path":"simultons/clock.py"}',
-                'simultons_get',
-                'quit',
-            ]
             for cmd in cmds:
                 log.debug(f'cmd: {cmd}')
                 cmd1 = cmd
@@ -134,13 +138,6 @@ class TestCLI(unittest.TestCase):
         return
 
     def test_script(self) -> None:
-        cmds = [
-            'set debug true',
-            'simulation_get',
-            'simultons_post  {"src_path":"simultons/clock.py"}',
-            'simultons_get',
-            'quit',
-        ]
         fname = new_commands_file(cmds)
         log.debug(f'fname: {fname}')
         command = ['.venv/bin/python3', '-m', 'simultons']
