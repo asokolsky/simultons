@@ -1,6 +1,3 @@
-# Source - https://stackoverflow.com/a
-# Posted by Booboo
-# Retrieved 2026-01-03, License - CC BY-SA 4.0
 import asyncio
 import concurrent.futures
 import sys
