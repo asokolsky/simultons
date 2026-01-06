@@ -3,7 +3,8 @@
 ## TODO
 
 * full blow simulation of riders/elevators;
-* API-based JavaScript GUI for the elevator simulation.
+* API-based JavaScript GUI for the elevator simulation;
+* More use of YAML as IaC - use manifests to define components, the key - references to other objects.
 
 ## DONE
 
