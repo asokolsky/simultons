@@ -24,9 +24,9 @@ There is a single [simulation](simulation.md) which provides context for
 
 These popped up within hours: How do I programmatically...
 
-* [start the FastAPI server?](./fastapi-start.md)
-* [shut the FastAPI server?](./fastapi-shut.md)
-* [add XXX to the FastAPI event loop?](./fastapi-event-loop.md)
+* [start the FastAPI server?](fastapi.md)
+* [shut the FastAPI server?](fastapi.md)
+* [add XXX to the FastAPI event loop?](fastapi.md)
 
 ## More readings
 
