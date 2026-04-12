@@ -1,6 +1,5 @@
 import asyncio
 from contextlib import suppress
-from typing import Any
 
 from . import (
     SimultonResponse,

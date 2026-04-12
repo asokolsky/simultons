@@ -40,6 +40,12 @@ run = [
 	'uv run -m unittest -v tests/*_test.py tests/building/*_test.py',
 ]
 
+[tasks.building-tests]
+description = "Execute unit tests"
+run = [
+	'uv run -m unittest -v tests/building/*_test.py',
+]
+
 [tasks.sim]
 description = "Run simulation REPL"
 run = [

@@ -5,7 +5,7 @@ Simulation REST client in python
 import asyncio
 import time
 from types import TracebackType
-from typing import Any
+from typing import Any, Self
 
 import httpx
 
@@ -102,7 +102,7 @@ class SimulationClient:
         self._launcher = None
         return
 
-    async def __aenter__(self) -> 'SimulationClient':
+    async def __aenter__(self) -> Self:
         """
         Enter the with block, start the CLI session
         """

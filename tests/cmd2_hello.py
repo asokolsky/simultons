@@ -2,6 +2,7 @@ import asyncio
 import concurrent.futures
 import sys
 import threading
+from collections.abc import Coroutine
 
 import cmd2
 
@@ -9,7 +10,7 @@ _event_loop = None
 _event_lock = threading.Lock()
 
 
-def run_async(coro) -> concurrent.futures.Future:
+def run_async(coro: Coroutine) -> concurrent.futures.Future:
     """Await a coroutine from a synchronous function/method."""
 
     global _event_loop

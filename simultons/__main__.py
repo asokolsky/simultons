@@ -10,6 +10,7 @@ import logging
 import sys
 import threading
 from argparse import ArgumentParser, ArgumentTypeError, RawTextHelpFormatter
+from collections.abc import Coroutine
 from pathlib import Path
 from typing import Any
 
@@ -41,7 +42,7 @@ _event_loop = None
 _event_lock = threading.Lock()
 
 
-def run_async(coro) -> concurrent.futures.Future:
+def run_async(coro: Coroutine) -> concurrent.futures.Future:
     """Await a coroutine from a synchronous function/method."""
 
     global _event_loop

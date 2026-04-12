@@ -26,7 +26,7 @@ import time
 from collections import deque
 from pathlib import Path
 from types import TracebackType
-from typing import IO, Any
+from typing import IO, Any, Self
 
 from simultons import setup_logging
 
@@ -51,7 +51,7 @@ class ProcessSession:
         self.env = env
         return
 
-    def __enter__(self) -> 'ProcessSession':
+    def __enter__(self) -> Self:
         """
         Enter the with block, start the CLI session
         """
@@ -175,7 +175,7 @@ class AsyncProcessSession:
         self.command_line = command_line
         return
 
-    async def __aenter__(self) -> 'AsyncProcessSession':
+    async def __aenter__(self) -> Self:
         """
         Enter the with block, start the process session
         """

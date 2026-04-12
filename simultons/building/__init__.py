@@ -3,7 +3,7 @@ Playing with FastAPI, pydantic while simulating stuff
 """
 
 # ruff: noqa: I001
-from .schemas import ElevatorResponse, NewElevatorParams
+from .schemas import ElevatorResponse, ElevatorState, NewElevatorParams
 from .button import Button, ButtonWithLed, ButtonWithLedPanel
 from .elevator import Elevator
 
@@ -15,6 +15,9 @@ __all__ = [
     # elevator.py
     'Elevator',
     # schemas.py
-    'NewElevatorParams',
     'ElevatorResponse',
+    'ElevatorState',
+    'NewElevatorParams',
+    'ElevatorStateElevatorResponse',
+    'NewElevatorParams',
 ]

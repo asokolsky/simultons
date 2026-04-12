@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from fastapi_utils.enums import StrEnum
 
 from simultons import (
+    Clock,
     Message,
     Simulton,
     SimultonRequest,
@@ -19,11 +20,16 @@ from simultons import (
     Tags,
     api_elevators,
     api_simulton,
-    get_random_id,
+    # get_random_id,
     setup_logging,
 )
 
-from . import ButtonWithLedPanel, ElevatorResponse, NewElevatorParams
+from . import (
+    ButtonWithLedPanel,
+    ElevatorResponse,
+    ElevatorState,
+    NewElevatorParams,
+)
 
 log = setup_logging(__name__)
 
@@ -51,37 +57,7 @@ class LoadValue(StrEnum):
         return repr(self.value)
 
 
-class ElevatorState(StrEnum):
-    """
-    Possible values of the Elevator State
-    """
-
-    # low power state for an empty elevator with closed doors
-    IDLE = auto()
-    # with or without load
-    DOORS_OPENING = auto()
-    # with or without load
-    DOORS_CLOSING = auto()
-    # moving to a destination floor with or without load
-    GOING = auto()
-    # with or without load
-    DOORS_OPENED = auto()
-
-    @classmethod
-    def is_valid(cls, st: Union[str, 'ElevatorState']) -> bool:
-        """
-        Valid value recognizer
-        """
-        return st in ElevatorState._value2member_map_
-
-    def __repr__(self) -> str:
-        """
-        To enable serialization as a string...
-        """
-        return repr(self.value)
-
-
-class Elevator:
+class Elevator(Clock):
     """
     Elevator
     """
@@ -99,7 +75,7 @@ class Elevator:
 
     def __init__(
         self,
-        sim: Simulton | None,
+        sim: Simulton,
         name: str,
         floors: int,
         current_floor: int = 0,
@@ -107,20 +83,12 @@ class Elevator:
         """
         Initializer
         """
-        assert floors > 0
-        self._floors = floors
-        self._id = ''
-        self._name = name
-        self._sim = sim
-        if sim is None:
-            # important for testing
-            self._id = get_random_id()
-        else:
-            self._id = sim.get_new_instance_id()
-            sim.add_instance(self, self._id)
+        super().__init__(sim, name, 0.0)
         #
         # Instance Attributes
         #
+        assert floors > 0
+        self._floors = floors
         self._current_floor = current_floor
         self._current_load = 0
         self._destination_floors: list[int] = []
