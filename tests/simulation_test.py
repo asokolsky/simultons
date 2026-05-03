@@ -14,8 +14,10 @@ from simultons import (
     NewSimultonParams,
     SimulationClient,
     SimulationResponse,
+    SimulationState,
     SimultonClient,
     SimultonResponse,
+    SimultonState,
     load_yaml,
     setup_logging,
 )
@@ -81,7 +83,7 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         res = self._client.post_simulton(param)
         assert res is not None
         simulton_client = SimultonClient(res)
-        self.assertEqual(simulton_client._state, 'PAUSED')
+        self.assertEqual(simulton_client._state, SimultonState.PAUSED)
         return simulton_client
 
     async def create_clocks_simultons(
@@ -104,7 +106,7 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         res: dict[int, SimultonResponse] = {}
         for resp in resps:
             assert isinstance(resp, SimultonResponse)
-            self.assertEqual(resp.state, 'PAUSED')
+            self.assertEqual(resp.state, SimultonState.PAUSED)
             assert isinstance(resp.port, int)
             self.assertIsInstance(resp.port, int)
             res[resp.port] = resp
@@ -168,7 +170,7 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         sim = self._client.get_simulation()
         log.debug(f'get_simulation() => {sim}')
         assert sim is not None
-        self.assertEqual(sim.state, 'PAUSED')
+        self.assertEqual(sim.state, SimulationState.PAUSED)
         self.assertEqual(sim.rate, 0)
         self.assertTrue(sim.port)
         #
@@ -269,7 +271,7 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         assert self._client is not None
         sim = self._client.get_simulation()
         assert sim is not None
-        self.assertEqual(sim.state, 'PAUSED')
+        self.assertEqual(sim.state, SimulationState.PAUSED)
         self.assertEqual(sim.rate, 0)
         self.assertTrue(sim.port)
 
@@ -284,9 +286,9 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         )
         assert res is not None
         self._simulton_client = SimultonClient(res)
-        self.assertEqual(self._simulton_client._state, 'PAUSED')
+        self.assertEqual(self._simulton_client._state, SimultonState.PAUSED)
         res = await self._simulton_client.get_simulton()
-        self.assertEqual(self._simulton_client._state, 'PAUSED')
+        self.assertEqual(self._simulton_client._state, SimultonState.PAUSED)
         clocks = await self._simulton_client.get_items()
         log.info(f'clocks: {clocks}')
         self.assertEqual(clocks, {})
@@ -416,7 +418,7 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         assert self._client is not None
         sim = self._client.get_simulation()
         assert isinstance(sim, SimulationResponse)
-        self.assertEqual(sim.state, 'PAUSED')
+        self.assertEqual(sim.state, SimulationState.PAUSED)
         self.assertEqual(sim.rate, 0)
         self.assertTrue(sim.port)
 

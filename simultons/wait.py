@@ -1,6 +1,6 @@
 import asyncio
 import time
-from multiprocessing import Process
+from multiprocessing.process import BaseProcess
 
 import httpx
 
@@ -10,7 +10,7 @@ log = setup_logging(__name__)
 
 
 def wait_until_reachable(
-    url: str, proc: Process | None = None, timeout: int = 20
+    url: str, proc: BaseProcess | None = None, timeout: int = 20
 ) -> dict | None:
     """
     Wait upto timeout secs until the url is reachable

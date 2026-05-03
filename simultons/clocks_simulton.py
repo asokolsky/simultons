@@ -100,7 +100,8 @@ app = ClocksSimulton.create_app(clocks_lifespan)
 async def get_simulton(req: Request) -> SimultonResponse:
     log.debug('get clock simulton, port=%d', req.url.port)
     assert req.url.port is not None
-    return req.app.state.simulton.to_response(req.url.port)
+    simulton: ClocksSimulton = req.app.state.simulton
+    return simulton.to_response(req.url.port)
 
 
 @app.put(api_simulton, tags=[Tags.simulton])
@@ -109,7 +110,8 @@ async def put_simulton(req: SimultonRequest, request: Request) -> JSONResponse:
     Handle a request to change the simulton state
     """
     assert request.url.port is not None
-    return request.app.state.simulton.on_put_simulton(req, request.url.port)
+    simulton: ClocksSimulton = request.app.state.simulton
+    return simulton.on_put_simulton(req, request.url.port)
 
 
 @app.get(

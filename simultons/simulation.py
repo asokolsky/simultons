@@ -223,7 +223,8 @@ async def get_simulation(req: Request) -> SimulationResponse:
     """
     Get the simulation state
     """
-    return req.app.state.simulation.to_response(req.url.port)
+    simulation: Simulation = req.app.state.simulation
+    return simulation.to_response(req.url.port)
 
 
 @app.put(
@@ -266,8 +267,9 @@ async def create_simulton(
     """
     Handle new simulton creation
     """
+    simulation: Simulation = request.app.state.simulation
     try:
-        return await request.app.state.simulation.create_simulton(params)
+        return await simulation.create_simulton(params)
     except ValueError as err:
         content = Message(f'Bummer: {err}').model_dump()
         return JSONResponse(status_code=400, content=content)
@@ -301,10 +303,9 @@ async def get_simulton(
     """
     Get the simulation
     """
+    simulation: Simulation = request.app.state.simulation
     try:
-        return request.app.state.simulation._simultons[
-            id
-        ].to_simulton_response()
+        return simulation._simultons[id].to_simulton_response()
     except IndexError:
         pass
     content = Message('Item not found').model_dump()

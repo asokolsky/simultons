@@ -2,6 +2,7 @@
 Some of the elevator-related stuff
 """
 
+import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from enum import auto
@@ -173,7 +174,7 @@ class Elevator(Clock):
         """
         return
 
-    def to_response(self) -> ElevatorResponse:
+    async def to_response(self) -> ElevatorResponse:
         return ElevatorResponse(
             id=self._id,
             name=self._name,
@@ -227,7 +228,8 @@ app = ElevatorsSimulton.create_app(elevators_lifespan)
 async def get_simulton(req: Request) -> SimultonResponse:
     log.debug('get elevator simulton')
     assert req.url.port is not None
-    return req.app.state.simulton.to_response(req.url.port)
+    simulton: ElevatorsSimulton = req.app.state.simulton
+    return simulton.to_response(req.url.port)
 
 
 @app.put(api_simulton, tags=[Tags.simulton])
@@ -236,7 +238,8 @@ async def put_simulton(req: SimultonRequest, request: Request) -> JSONResponse:
     Handle a request to change the simulton state
     """
     assert request.url.port is not None
-    return request.app.state.simulton.on_put_simulton(req, request.url.port)
+    simulton: ElevatorsSimulton = request.app.state.simulton
+    return simulton.on_put_simulton(req, request.url.port)
 
 
 @app.get(
@@ -248,9 +251,12 @@ async def get_instances(request: Request) -> dict:
     """
     Get all the elevators
     """
+    simulton: ElevatorsSimulton = request.app.state.simulton
+    ids = list(simulton.instances.keys())
+    resps = [el.to_response() for el in simulton.instances.values()]
     return {
-        id: el.to_response().model_dump()
-        for id, el in request.app.state.simulton.instances.items()
+        id: resp.model_dump()
+        for id, resp in zip(ids, await asyncio.gather(*resps), strict=True)
     }
 
 
@@ -265,7 +271,7 @@ async def create_instance(params: NewElevatorParams, request: Request) -> dict:
     Handle new instance creation
     """
     el = Elevator(request.app.state.simulton, params.name, params.floors)
-    return el.to_response().model_dump()
+    return (await el.to_response()).model_dump()
 
 
 @app.get(
@@ -279,9 +285,10 @@ async def get_elevator(id: str, request: Request) -> JSONResponse:
     Get the specific elevator
     """
     try:
-        el = request.app.state.simulton.get_instance_by_id(id)
+        simulton: ElevatorsSimulton = request.app.state.simulton
+        el = simulton.get_instance_by_id(id)
         return JSONResponse(
-            status_code=200, content=el.to_response().model_dump()
+            status_code=200, content=(await el.to_response()).model_dump()
         )
     except KeyError:
         pass

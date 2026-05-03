@@ -80,7 +80,7 @@ class SimulationClient:
         res = self._launcher.wait_until_reachable(api_simulation)
         log.debug(f'wait_until_reachable({api_simulation}) => {res}')
         assert res is not None
-        assert res['state'] == 'PAUSED'
+        assert res['state'] == SimulationState.PAUSED
         assert res['rate'] == 0.0
         assert res['port']
         return True

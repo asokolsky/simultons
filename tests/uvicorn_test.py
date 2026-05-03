@@ -5,7 +5,8 @@ Test launching/shutting uvicorn/FastAPI server process
 import sys
 import unittest
 from dataclasses import dataclass
-from multiprocessing import Process, get_context
+from multiprocessing import get_context
+from multiprocessing.process import BaseProcess
 from multiprocessing.connection import Connection
 from pathlib import Path
 from typing import Any
@@ -157,7 +158,7 @@ class TestUvicorn(unittest.TestCase):
     Verify launching/shutting a fastapi process
     """
 
-    process: Process | None = None
+    process: BaseProcess | None = None
     restc = None
     pconn = None
 

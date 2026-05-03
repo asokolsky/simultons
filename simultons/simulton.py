@@ -16,7 +16,7 @@ import signal
 import string
 import sys
 from typing import Any
-from starlette.types import Lifespan, AppType
+from starlette.types import Lifespan
 
 import zmq
 import zmq.asyncio
@@ -274,7 +274,7 @@ class Simulton:
         return
 
     @classmethod
-    def create_app(cls, lifespan: Lifespan[AppType]) -> FastAPI:
+    def create_app(cls, lifespan: Lifespan[FastAPI]) -> FastAPI:
         log.debug(f'Creating a FastAPI app {cls.description}')
         return FastAPI(
             title=cls.title,

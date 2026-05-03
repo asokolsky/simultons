@@ -67,7 +67,7 @@ class ProcessSession:
             bufsize=1,
         )
         assert self.popen is not None
-        log.debug(f'pid:{self.popen.pid} args:{self.popen.args}')
+        log.debug(f'pid:{self.popen.pid} args:{self.popen.args!r}')
         assert self.popen.stdout is not None
         assert self.popen.stderr is not None
         os.set_blocking(self.popen.stdout.fileno(), False)
