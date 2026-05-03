@@ -109,22 +109,20 @@ In summary:
     response_model=SimulationResponse,
     status_code=202,
     responses={400: {"model": Message}})
-async def put_simulation(req: SimulationRequest):
+async def put_simulation(req: SimulationRequest, request: Request):
     '''
     Update the simulation state
     '''
-    assert theSimulation is not None
+    simulation = request.app.state.simulation
     if req.rate is not None:
-        theSimulation.rate = req.rate
-    # this assignment will result in multiple functions being called
-    await theSimulation.setState(req.state)
-    if theSimulation.state == SimulationState.SHUTTING:
+        simulation.rate = req.rate
+    await simulation.setState(req.state)
+    if simulation.state == SimulationState.SHUTTING:
         background = BackgroundTask(shut_the_process)
     else:
         background = None
-    content = SimulationResponse(
-        state=theSimulation.state, rate=theSimulation.rate).model_dump()
-    return JSONResponse(content=content, background=background)
+    content = simulation.to_response().model_dump()
+    return JSONResponse(status_code=202, content=content, background=background)
 
 async def shut_the_process():
     '''

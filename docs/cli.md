@@ -2,11 +2,6 @@
 
 ## Starting simultons interactive shell
 
-This will create virtual environment and launch the shell:
-```sh
-uv run -m simultons
-```
-If the ven is already present:
 ```sh
 uv run -m simultons
 ```

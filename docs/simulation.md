@@ -9,9 +9,8 @@ Simulation is:
 ## Simulation State
 
 * Init
-* Initializing
-* Running - maybe at a rate != 1
 * Paused
+* Running - maybe at a rate != 1
 * Shutting
 
 ## Simultons
