@@ -84,7 +84,7 @@ cmds = [
     'set debug true',
     'set feedback_to_output true',
     'simulation_get',
-    'simultons_post  {"src_path":"simultons/clock.py"}',
+    'simultons_post  {"src_path":"simultons/clocks_simulton.py"}',
     'simulton_get 9110',
     'simultons_get 9110',
     # 'simulton_new_item 9110 {"name": "clock-A", "latency": 0.1}'

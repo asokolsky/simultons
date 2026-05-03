@@ -18,6 +18,4 @@ __all__ = [
     'ElevatorResponse',
     'ElevatorState',
     'NewElevatorParams',
-    'ElevatorStateElevatorResponse',
-    'NewElevatorParams',
 ]

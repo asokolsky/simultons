@@ -38,7 +38,7 @@ The building has multiple floors and >=1 elevator shaft(s).  Each floor has a [f
 
 ## Playing with it
 
-For now, the play is limited to running unit tests - see blow.
+For now, the play is limited to running unit tests - see below.
 
 ## Prerequisites and Toolchain
 
@@ -50,7 +50,8 @@ For now, the play is limited to running unit tests - see blow.
 
 These are installed by `mise`:
 * [uv](https://github.com/astral-sh/uv)
-* [ZeroMQ](https://zeromq.org/)
+* [ruff](https://github.com/astral-sh/ruff)
+* [mypy](https://mypy.readthedocs.io/)
 
 By now you should be able to run regressiont ests:
 ```sh
@@ -141,7 +142,7 @@ mise tests
 
 To run one unit test file:
 ```sh
-.venv/bin/pythons -m unittest tests/simulation_test.py
+uv run -m unittest tests/simulation_test.py
 ```
 
 ## How to use it

@@ -1,6 +1,4 @@
 [tools]
-mypy = 'latest'
-ruff = 'latest'
 uv = 'latest'
 
 [tasks.clean]
@@ -41,7 +39,7 @@ run = [
 ]
 
 [tasks.building-tests]
-description = "Execute unit tests"
+description = "Execute building unit tests"
 run = [
 	'uv run -m unittest -v tests/building/*_test.py',
 ]

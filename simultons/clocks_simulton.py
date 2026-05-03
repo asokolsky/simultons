@@ -75,26 +75,21 @@ class ClocksSimulton(Simulton):
         return
 
 
-theClocks: ClocksSimulton | None = None  # noqa: N816
-
-
 @asynccontextmanager
-async def clocks_lifespan(_: FastAPI) -> AsyncGenerator:
+async def clocks_lifespan(app: FastAPI) -> AsyncGenerator:
     """
     Context manager for managing the application's lifespan events.
     Code before 'yield' runs on startup.
     Code after 'yield' runs on shutdown.
     """
     log.debug('clocks simulton startup_event')
-    global theClocks
-    theClocks = ClocksSimulton()
-    await theClocks.on_startup()
+    app.state.simulton = ClocksSimulton()
+    await app.state.simulton.on_startup()
 
     yield  # The application starts receiving requests after this point
 
-    log.debug(f'clocks simulton shutdown_event {theClocks}')
-    await theClocks.on_shutdown()
-    theClocks = None
+    log.debug(f'clocks simulton shutdown_event {app.state.simulton}')
+    await app.state.simulton.on_shutdown()
     return
 
 
@@ -104,11 +99,8 @@ app = ClocksSimulton.create_app(clocks_lifespan)
 @app.get(api_simulton, response_model=SimultonResponse, tags=[Tags.simulton])
 async def get_simulton(req: Request) -> SimultonResponse:
     log.debug('get clock simulton, port=%d', req.url.port)
-    # global theClocks
-    assert theClocks is not None
     assert req.url.port is not None
-    # no need to await - Simulton.to_response is NOT async
-    return theClocks.to_response(req.url.port)
+    return req.app.state.simulton.to_response(req.url.port)
 
 
 @app.put(api_simulton, tags=[Tags.simulton])
@@ -116,26 +108,20 @@ async def put_simulton(req: SimultonRequest, request: Request) -> JSONResponse:
     """
     Handle a request to change the simulton state
     """
-    assert theClocks is not None
     assert request.url.port is not None
-    return theClocks.on_put_simulton(req, request.url.port)
+    return request.app.state.simulton.on_put_simulton(req, request.url.port)
 
 
 @app.get(
     api_clocks, response_model=dict[str, ClockResponse], tags=[Tags.clocks]
 )
-async def get_instances() -> dict:
+async def get_instances(request: Request) -> dict:
     """
     Get all the instances
     """
-    if theClocks is None:
-        return {}
-    ids = list(theClocks.instances.keys())
-    resps = [cl.to_response() for cl in theClocks.instances.values()]
-    # return {
-    #    id: (await cl.to_response()).model_dump()
-    #    for id, cl in theClocks.instances.items()
-    # }
+    simulton = request.app.state.simulton
+    ids = list(simulton.instances.keys())
+    resps = [cl.to_response() for cl in simulton.instances.values()]
     return {
         id: resp.model_dump()
         for id, resp in zip(ids, await asyncio.gather(*resps), strict=True)
@@ -148,23 +134,21 @@ async def get_instances() -> dict:
     status_code=201,
     tags=[Tags.clocks],
 )
-async def create_instance(params: NewClockParams) -> dict:
+async def create_instance(params: NewClockParams, request: Request) -> dict:
     """
     Handle new instance creation
     """
-    assert theClocks is not None
-    cl = Clock(theClocks, params.name, params.latency)
+    cl = Clock(request.app.state.simulton, params.name, params.latency)
     return (await cl.to_response()).model_dump()
 
 
 @app.get(api_clocks + '/{id}', response_model=ClockResponse, tags=[Tags.clocks])
-async def get_clock(id: str) -> dict | JSONResponse:
+async def get_clock(id: str, request: Request) -> dict | JSONResponse:
     """
     Get the simulated time
     """
-    assert theClocks is not None
     try:
-        cl: Clock = theClocks.get_instance_by_id(id)
+        cl: Clock = request.app.state.simulton.get_instance_by_id(id)
         return (await cl.to_response()).model_dump()
     except KeyError:
         pass
@@ -173,13 +157,12 @@ async def get_clock(id: str) -> dict | JSONResponse:
 
 
 @app.delete(api_clocks + '/{id}', tags=[Tags.clocks])
-async def delete_clock(id: str) -> JSONResponse:
+async def delete_clock(id: str, request: Request) -> JSONResponse:
     """
     Delete the clock
     """
-    assert theClocks is not None
     try:
-        theClocks.del_instance_by_id(id)
+        request.app.state.simulton.del_instance_by_id(id)
         content = Message('OK').model_dump()
         return JSONResponse(status_code=200, content=content)
     except KeyError:

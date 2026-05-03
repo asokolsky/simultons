@@ -3,7 +3,7 @@
 #
 version: 1
 simultons:
-  - src_path: simultons/clock.py
+  - src_path: simultons/clocks_simulton.py
     instances:
       - name: clock-foo
         latency: 0
@@ -11,7 +11,7 @@ simultons:
         latency: 0.1
       - name: clock-baz
         latency: 0.2
-  - src_path: simultons/clock.py
+  - src_path: simultons/clocks_simulton.py
     instances:
       - name: clock-A
         latency: 0.3

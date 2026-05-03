@@ -171,7 +171,7 @@ class TestUvicorn(unittest.TestCase):
 
         parent_conn, child_conn = ctxt.Pipe()
         cls.pconn = parent_conn
-        path: Path = Path('simultons/clock.py')
+        path: Path = Path('simultons/clocks_simulton.py')
         assert path.exists()
         cls.process = ctxt.Process(
             name=f'{path.stem}-{port}',

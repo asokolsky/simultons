@@ -51,7 +51,7 @@ class TestSimulton(unittest.IsolatedAsyncioTestCase):
         # log.info('test_all', 'fastapi pid:', self.popen.pid)
         assert self._simulton is not None
         (status_code, rdata) = self._simulton.restc.get(api_simulton)
-        self.assertTrue(status_code, 200)
+        self.assertEqual(status_code, 200)
         self.assertIn(rdata['state'], ['PAUSED', 'INIT'])
         self.assertEqual(rdata['rate'], 0)
         #
@@ -64,14 +64,14 @@ class TestSimulton(unittest.IsolatedAsyncioTestCase):
             (status_code, rdata) = self._simulton.restc.post(
                 api_elevators, params.model_dump()
             )
-            self.assertTrue(status_code, 201)
-            self.assertTrue(rdata['name'], name)
-            self.assertTrue(rdata['floors'], floors)
+            self.assertEqual(status_code, 201)
+            self.assertEqual(rdata['name'], name)
+            self.assertEqual(rdata['floors'], floors)
         #
         # retrieve them all
         #
         (status_code, elevators) = self._simulton.restc.get(api_elevators)
-        self.assertTrue(status_code, 200)
+        self.assertEqual(status_code, 200)
         self.assertEqual(len(elevators), len(names))
 
         for id, el in elevators.items():
@@ -81,7 +81,7 @@ class TestSimulton(unittest.IsolatedAsyncioTestCase):
             (status_code, rdata) = self._simulton.restc.get(
                 f'{api_elevators}/{id}'
             )
-            self.assertTrue(status_code, 200)
+            self.assertEqual(status_code, 200)
             self.assertEqual(rdata, el)
             self.assertIn(el['name'], names)
 

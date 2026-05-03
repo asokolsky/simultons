@@ -3,7 +3,7 @@ import unittest
 from fastapi.testclient import TestClient
 
 from simultons import setup_logging
-from simultons.building import ElevatorResponse, NewElevatorParams
+from simultons.building import NewElevatorParams
 from simultons.building.elevator import app
 
 elevators_uri = '/api/v1/elevators/'
@@ -32,7 +32,7 @@ class TestElevatorSimultonWithTestClient(unittest.TestCase):
             # blank slate, no elevators created yet
             #
             response = client.get(elevators_uri)
-            self.assertTrue(response.status_code, 200)
+            self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json(), {})
 
             #
@@ -44,25 +44,22 @@ class TestElevatorSimultonWithTestClient(unittest.TestCase):
                 params = NewElevatorParams(name=name, floors=floors)
                 log.info(f'posting: {params.model_dump()}')
                 response = client.post(elevators_uri, json=params.model_dump())
-                self.assertTrue(response.status_code, 201)
+                self.assertEqual(response.status_code, 201)
                 jresp = response.json()
                 self.assertEqual(jresp['name'], name)
             #
             # retrieve them all
             #
             response = client.get(elevators_uri)
-            self.assertTrue(response.status_code, 200)
+            self.assertEqual(response.status_code, 200)
             jresp = response.json()
             #
             # retrieve them, one at a time
             #
             for id, el in jresp.items():
                 response = client.get(f'{elevators_uri}{id}')
-                expected = ElevatorResponse(
-                    id=id, name=el['name'], floors=floors
-                )
                 log.info(f'received: {response.json()}')
-                log.info(f'expected: {expected.model_dump()}')
-                self.assertEqual(response.json(), expected.model_dump())
+                log.info(f'expected: {el}')
+                self.assertEqual(response.json(), el)
 
         return

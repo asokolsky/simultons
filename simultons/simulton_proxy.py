@@ -151,6 +151,7 @@ class SimultonProxy(Simulton):
         Compare to SimulationClient.tear_down
         """
         log.debug('shutdown')
+        await super().on_shutdown()
         assert self._launcher is not None
         self._launcher.wait_to_die(4)
         await self._launcher.shutdown(timeout=1)

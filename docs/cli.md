@@ -8,7 +8,7 @@ uv run -m simultons
 ```
 If the ven is already present:
 ```sh
-.venv/bin/python3 -m simultons
+uv run -m simultons
 ```
 
 Once the shell starts, simulation service is launched and

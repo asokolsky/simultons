@@ -38,10 +38,11 @@ from .fast_launcher import FastLauncher
 from .simulton import get_random_id, Simulton, shut_the_process
 from .simulton_proxy import SimultonProxy
 from .simulton_client import SimultonClient
-from .simulation import Simulation, theSimulation
+from .simulation import Simulation
 from .simulation_client import SimulationClient
 
 from .clock import Clock
+from .building import ElevatorResponse, ElevatorState, NewElevatorParams
 # do not import clocks_simulton to avoid creating FastAPI app.
 # from .clocks_simulton import ClocksSimulton
 
@@ -64,8 +65,6 @@ __all__ = [
     # 'ClocksSimulton',
     # fast_launcher.py
     'FastLauncher',
-    # elevator_simulton.py
-    'app',
     # process_session.py
     'ProcessSession',
     'AsyncProcessSession',
@@ -81,19 +80,19 @@ __all__ = [
     'SimulationState',
     'SimulationRequest',
     'SimulationResponse',
-    'NewElevatorParams',
     'SimultonState',
     'NewSimultonParams',
     'SimultonRequest',
     'SimultonResponse',
-    'NewElevatorParams',
-    'ElevatorResponse',
     'Message',
     'Tags',
+    # building/
+    'ElevatorResponse',
+    'ElevatorState',
+    'NewElevatorParams',
     # simulation.py
     'Simulation',
     'SimulationState',
-    'theSimulation',
     'SimultonProxy',
     # simulation_client.py
     'SimulationClient',

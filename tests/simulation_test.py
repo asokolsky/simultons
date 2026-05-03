@@ -76,7 +76,7 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         """
         Create a new simulton for a collection of clocks
         """
-        param = NewSimultonParams(src_path='simultons/clock.py')
+        param = NewSimultonParams(src_path='simultons/clocks_simulton.py')
         assert self._client is not None
         res = self._client.post_simulton(param)
         assert res is not None
@@ -91,7 +91,7 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         Create N simultons (in parallel)
         """
         assert self._client is not None
-        param = NewSimultonParams(src_path='simultons/clock.py')
+        param = NewSimultonParams(src_path='simultons/clocks_simulton.py')
         tasks = [
             self._client.async_post_simulton(param)
             for _ in range(num_simultons)
@@ -203,7 +203,7 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         """
         log.info('test_load_simulton running')
         params = {
-            'src_path': 'simultons/clock.py',
+            'src_path': 'simultons/clocks_simulton.py',
             'instances': [
                 {'name': 'clock-A', 'latency': 0.1},
                 {'name': 'clock-B', 'latency': 0.2},
@@ -280,7 +280,7 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         # create a simulton for a collection of clocks
         # note the wait=True here
         res = self._client.post_simulton(
-            NewSimultonParams(src_path='simultons/clock.py')
+            NewSimultonParams(src_path='simultons/clocks_simulton.py')
         )
         assert res is not None
         self._simulton_client = SimultonClient(res)

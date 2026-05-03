@@ -2,6 +2,7 @@
 Simulation launches all the simultons
 """
 
+import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
@@ -145,11 +146,9 @@ class Simulation:
         Simulation FastAPI shutdown event handler
         """
         log.debug(f'on_shutdown {self}')
-        #
-        # TODO: redo this as parallel tasks
-        #
-        for s in self._simultons.values():
-            await s.close_sockets()
+        await asyncio.gather(
+            *[s.close_sockets() for s in self._simultons.values()]
+        )
 
         await self.setState(SimulationState.SHUTTING)
         log.debug('Closing zmq publisher')
@@ -160,11 +159,7 @@ class Simulation:
         self._zsocket.close()
         self._zcontext.term()
         log.debug('Shutting the simulton proxies')
-        #
-        # TODO: redo this as parallel tasks
-        #
-        for s in self._simultons.values():
-            await s.shutdown()
+        await asyncio.gather(*[s.shutdown() for s in self._simultons.values()])
         return
 
     async def create_simulton(
@@ -183,28 +178,21 @@ class Simulation:
         return simulton.to_simulton_response()
 
 
-theSimulation: Simulation | None = None  # Simulation()  # noqa: N816
-# let's try to delay the instantiation to ensure that just importing the
-# package does NOT create network resources
-
-
 @asynccontextmanager
-async def simulation_lifespan(_: FastAPI) -> AsyncGenerator:
+async def simulation_lifespan(app: FastAPI) -> AsyncGenerator:
     """
     Context manager for managing the application's lifespan events.
     Code before 'yield' runs on startup.
     Code after 'yield' runs on shutdown.
     """
     log.debug('simulation startup_event')
-    global theSimulation
-    theSimulation = Simulation()
-    await theSimulation.on_startup()
+    app.state.simulation = Simulation()
+    await app.state.simulation.on_startup()
 
     yield  # The application starts receiving requests after this point
 
     log.debug('simulation shutdown_event')
-    await theSimulation.on_shutdown()
-    theSimulation = None
+    await app.state.simulation.on_shutdown()
     return
 
 
@@ -235,8 +223,7 @@ async def get_simulation(req: Request) -> SimulationResponse:
     """
     Get the simulation state
     """
-    assert theSimulation is not None
-    return theSimulation.to_response(req.url.port)
+    return req.app.state.simulation.to_response(req.url.port)
 
 
 @app.put(
@@ -246,21 +233,22 @@ async def get_simulation(req: Request) -> SimulationResponse:
     responses={400: {'model': Message}},
     tags=[Tags.simulation],
 )
-async def put_simulation(req: SimulationRequest) -> JSONResponse:
+async def put_simulation(
+    req: SimulationRequest, request: Request
+) -> JSONResponse:
     """
     Update the simulation state
     """
     log.debug(f'put_simulation({req})')
-    assert theSimulation is not None
+    simulation = request.app.state.simulation
     if req.rate is not None:
-        theSimulation.rate = req.rate
-    # this assignment will result in multiple functions being called
-    await theSimulation.setState(req.state)
-    if theSimulation.state == SimulationState.SHUTTING:
+        simulation.rate = req.rate
+    await simulation.setState(req.state)
+    if simulation.state == SimulationState.SHUTTING:
         background = BackgroundTask(shut_the_process)
     else:
         background = None
-    content = theSimulation.to_response().model_dump()
+    content = simulation.to_response().model_dump()
     return JSONResponse(status_code=202, content=content, background=background)
 
 
@@ -273,13 +261,13 @@ async def put_simulation(req: SimulationRequest) -> JSONResponse:
 )
 async def create_simulton(
     params: NewSimultonParams,
+    request: Request,
 ) -> SimultonResponse | JSONResponse:
     """
     Handle new simulton creation
     """
-    assert theSimulation is not None
     try:
-        return await theSimulation.create_simulton(params)
+        return await request.app.state.simulation.create_simulton(params)
     except ValueError as err:
         content = Message(f'Bummer: {err}').model_dump()
         return JSONResponse(status_code=400, content=content)
@@ -290,15 +278,14 @@ async def create_simulton(
     response_model=dict[int, SimultonResponse],
     tags=[Tags.simultons],
 )
-async def get_simultons() -> dict:
+async def get_simultons(request: Request) -> dict:
     """
     Get all the simultons
     """
-    assert theSimulation is not None
     # NOTE: this does NOT involve talking to simultons
     return {
         port: s.to_simulton_response()
-        for port, s in theSimulation._simultons.items()
+        for port, s in request.app.state.simulation._simultons.items()
     }
 
 
@@ -308,13 +295,16 @@ async def get_simultons() -> dict:
     responses={404: {'model': Message}},
     tags=[Tags.simultons],
 )
-async def get_simulton(id: int) -> SimultonResponse | JSONResponse:
+async def get_simulton(
+    id: int, request: Request
+) -> SimultonResponse | JSONResponse:
     """
     Get the simulation
     """
-    assert theSimulation is not None
     try:
-        return theSimulation._simultons[id].to_simulton_response()
+        return request.app.state.simulation._simultons[
+            id
+        ].to_simulton_response()
     except IndexError:
         pass
     content = Message('Item not found').model_dump()
