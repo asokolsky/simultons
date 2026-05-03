@@ -6,8 +6,8 @@ import sys
 import unittest
 from dataclasses import dataclass
 from multiprocessing import get_context
-from multiprocessing.process import BaseProcess
 from multiprocessing.connection import Connection
+from multiprocessing.process import BaseProcess
 from pathlib import Path
 from typing import Any
 

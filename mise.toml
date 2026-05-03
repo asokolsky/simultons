@@ -26,6 +26,14 @@ run = [
     'uv run ruff check -v simultons tests'
 ]
 
+[tasks.pre-commit]
+description = "Pre-commit checks: formatting and lint"
+run = [
+    'uv run ruff format --check simultons tests',
+    'uv run ruff check --select I simultons tests',
+    'uv run ruff check simultons tests',
+]
+
 [tasks.mypy]
 description = "Check typing"
 run = [
