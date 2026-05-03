@@ -8,7 +8,7 @@ from typing import Union
 from fastapi_utils.enums import StrEnum
 from pydantic import BaseModel, NonNegativeInt, PositiveInt
 
-from ..schemas import ClockResponse
+from simultons.schemas import ClockResponse
 
 
 class ElevatorState(StrEnum):

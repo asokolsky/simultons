@@ -60,7 +60,7 @@ class Clock:
             self._last_start = 0
         return True
 
-    def on_running(self, now: float, rate: float) -> bool:
+    def on_running(self, now: float, _rate: float) -> bool:
         """
         Simulation run event handler
         """

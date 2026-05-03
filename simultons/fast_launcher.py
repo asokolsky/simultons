@@ -279,7 +279,7 @@ class FastLauncher:
             self._arestc = None
         return
 
-    async def shutdown(self, timeout: float = 0.5) -> bool:
+    async def shutdown(self, timeout: float = 0.5) -> bool:  # noqa: ASYNC109
         """
         Stop the FastAPI service process
         """
