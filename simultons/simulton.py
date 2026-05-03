@@ -81,9 +81,9 @@ class Simulton:
             name = f'{type(self).__qualname__}@{hex(id(self))}'
         self._name = name
         # start zmq subscriber, will be destroyed in on_shutdown
-        from .fast_launcher import child_simulation_zspec  # noqa: PLC0415
+        from .fast_launcher import _ENV_ZSPEC  # noqa: PLC0415
 
-        zspec = child_simulation_zspec or make_zspec()
+        zspec = os.environ.get(_ENV_ZSPEC) or make_zspec()
         self._zcontext = zmq.asyncio.Context()
         self._zsocket = self._zcontext.socket(zmq.SUB)
         self._zsocket.setsockopt(zmq.SUBSCRIBE, simulation_ztopic.encode())
@@ -248,21 +248,15 @@ class Simulton:
             self._zcontext.term()
         except Exception as e:
             log.info(f'Caught {type(e)}: {e}')
-        # connection to parent
-        from .fast_launcher import connection_to_parent  # noqa: PLC0415
+        # restore stdout/stderr if they were redirected to the parent pipe
+        from .fast_launcher import _ENV_REDIRECT_STDOUT  # noqa: PLC0415
 
-        if connection_to_parent is None:
+        if not os.environ.pop(_ENV_REDIRECT_STDOUT, None):
             return
         sys.stdout.flush()
         sys.stderr.flush()
         sys.stdout = sys.__stdout__
         sys.stderr = sys.__stderr__
-        log.debug(f'on_shutdown closing {connection_to_parent}')
-        try:
-            connection_to_parent.close()
-        except Exception as e:
-            log.info(f'Caught {type(e)}: {e}')
-        connection_to_parent = None
         return
 
     def get_new_instance_id(self) -> str:

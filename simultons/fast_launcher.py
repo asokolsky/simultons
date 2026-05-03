@@ -83,8 +83,8 @@ class PipeWriter:
 #
 redirect_stdout_stderr = False
 
-connection_to_parent: Connection | None = None
-child_simulation_zspec: str | None = None
+_ENV_ZSPEC = '_SIMULTON_ZSPEC'
+_ENV_REDIRECT_STDOUT = '_SIMULTON_REDIRECT_STDOUT'
 
 
 def launch_uvicorn(
@@ -97,10 +97,9 @@ def launch_uvicorn(
     https://bugfactory.io/articles/starting-and-stopping-uvicorn-in-the-background/
     https://github.com/fastapi/fastapi-cli/blob/main/src/fastapi_cli/cli.py#L172
     """
-    global connection_to_parent, child_simulation_zspec
-    connection_to_parent = conn
-    child_simulation_zspec = zspec
+    os.environ[_ENV_ZSPEC] = zspec
     if redirect_stdout_stderr:
+        os.environ[_ENV_REDIRECT_STDOUT] = '1'
         sys.stdout = PipeWriter(conn)
         sys.stderr = PipeWriter(conn)
 
