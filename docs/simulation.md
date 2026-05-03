@@ -29,6 +29,6 @@ Simulation informs simultons about:
 
 ## REST service /api/v1/simultons
 
-* GET -> dict[int port, [SimultonResponse](../simultons/schemas.py)]
-* POST [NewSimultonParams](../simultons/schemas.py) -> [SimultonResponse](../simultons/schemas.py)
-* GET '/api/v1/simultons/{id}' -> [SimultonResponse](../simultons/schemas.py)
+* GET -> dictionary keyed by simulton port, with [SimultonResponse](../simultons/schemas.py) values
+* POST [NewSimultonParams](../simultons/schemas.py) -> [SimultonResponse](../simultons/schemas.py) on a dynamically assigned free port
+* GET `/api/v1/simultons/{id}` -> [SimultonResponse](../simultons/schemas.py)

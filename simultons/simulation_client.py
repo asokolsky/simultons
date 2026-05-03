@@ -61,9 +61,10 @@ class SimulationClient:
         assert self._launcher._arestc is not None
         return self._launcher._arestc
 
-    def set_up(self) -> bool:
+    def set_up(self, port: int | None = None) -> bool:
         """
         Launch simulation process.
+        port overrides settings.yaml — pass find_free_port() for test isolation.
         """
         if self._settings is None:
             log.debug('SimulationClient.set_up => False')
@@ -72,7 +73,8 @@ class SimulationClient:
         assert isinstance(self._settings, dict)
         sim_settings = self._settings['simulation']
         assert isinstance(sim_settings, dict)
-        port = sim_settings['port']
+        if port is None:
+            port = sim_settings['port']
         source = sim_settings['source']
         self._launcher = FastLauncher(source, port)
         pid = self._launcher.launch()

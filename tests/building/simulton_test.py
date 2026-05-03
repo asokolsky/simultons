@@ -9,6 +9,7 @@ from simultons import (
     SimultonState,
     api_elevators,
     api_simulton,
+    find_free_port,
     setup_logging,
 )
 from simultons.building import NewElevatorParams
@@ -27,7 +28,7 @@ class TestSimulton(unittest.IsolatedAsyncioTestCase):
         # verify the FastAPI server is running
         #
         self._simulton: SimultonProxy | None = SimultonProxy(
-            'simultons/building/elevator.py', 9100
+            'simultons/building/elevator.py', find_free_port()
         )
         #
         # start the simulton process

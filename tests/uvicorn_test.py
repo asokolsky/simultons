@@ -22,6 +22,7 @@ from simultons import (
     SimultonRequest,
     SimultonState,
     api_simulton,
+    find_free_port,
     rest_client,
     setup_logging,
     wait_until_reachable,
@@ -150,7 +151,6 @@ def launch_uvicorn(conn: Connection, host: str, port: int, path: Path) -> None:
 
 
 host = '127.0.0.1'
-port = 8000
 
 
 class TestUvicorn(unittest.TestCase):
@@ -168,6 +168,7 @@ class TestUvicorn(unittest.TestCase):
         Launch uvicorn/FastAPI process
         """
         log.info('setUpClass')
+        port = find_free_port()
         ctxt = get_context('spawn')
 
         parent_conn, child_conn = ctxt.Pipe()

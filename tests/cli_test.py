@@ -1,7 +1,10 @@
+import os
+import signal
 import subprocess
 import tempfile
 import time
 import unittest
+from contextlib import suppress
 from pathlib import Path
 
 from simultons import ProcessSession, __version__, setup_logging
@@ -26,6 +29,7 @@ def run_simultons_cli(
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
+        start_new_session=True,
     )
     assert popen is not None
     # retrieve stdout and stderr
@@ -33,7 +37,20 @@ def run_simultons_cli(
     stdout_value = ''
     stderr_value = ''
     try:
-        stdout_value, stderr_value = popen.communicate(input=stdin_value)
+        stdout_value, stderr_value = popen.communicate(
+            input=stdin_value, timeout=timeout
+        )
+    except subprocess.TimeoutExpired:
+        with suppress(ProcessLookupError):
+            os.killpg(popen.pid, signal.SIGTERM)
+        try:
+            stdout_value, stderr_value = popen.communicate(timeout=2)
+        except subprocess.TimeoutExpired:
+            with suppress(ProcessLookupError):
+                os.killpg(popen.pid, signal.SIGKILL)
+            stdout_value, stderr_value = popen.communicate()
+        log.info(f'Timed out while communicating with {popen.pid}')
+        return -1, stdout_value, stderr_value
     except Exception as err:
         log.info(f'Caught while tying to communicate with {popen.pid}: {err}')
 
@@ -85,11 +102,11 @@ cmds = [
     'set feedback_to_output true',
     'simulation_get',
     'simultons_post  {"src_path":"simultons/clocks_simulton.py"}',
-    'simulton_get 9110',
-    'simultons_get 9110',
-    # 'simulton_new_item 9110 {"name": "clock-A", "latency": 0.1}'
-    # 'simulton_new_item 9110 {"name": "clock-B", "latency": 0.2}'
-    'simulton_get_items 9110',
+    'simulton_get latest',
+    'simultons_get latest',
+    # 'simulton_new_item latest {"name": "clock-A", "latency": 0.1}'
+    # 'simulton_new_item latest {"name": "clock-B", "latency": 0.2}'
+    'simulton_get_items latest',
     #'simultons_post  {"src_path":"simultons/building/elevator.py"}',
     'simultons_get',
     'quit',
@@ -127,14 +144,24 @@ class TestCLI(unittest.TestCase):
             for cmd in cmds:
                 log.debug(f'cmd: {cmd}')
                 cmd1 = cmd
+                deadline = time.monotonic() + 10
+                stdout = ''
+                stderr = ''
                 while not session.wait(timeout):
-                    stdout, stderr = session.consume_outputs(cmd1)
+                    out, err = session.consume_outputs(cmd1)
+                    stdout += out
+                    stderr += err
                     # log.debug('out: %s', stdout)
                     # log.debug('err: %s', stderr)
                     if stdout.endswith('\n'):
                         log.debug('Proceeding...')
                         break
                     cmd1 = ''
+                    if time.monotonic() > deadline:
+                        self.fail(
+                            f'Timed out waiting for {cmd!r}. '
+                            f'stdout={stdout!r} stderr={stderr!r}'
+                        )
         return
 
     def test_script(self) -> None:
@@ -144,11 +171,17 @@ class TestCLI(unittest.TestCase):
         with ProcessSession(command) as session:
             cmd = f'run_script {fname}'
             log.debug(f'cmd: {cmd}')
+            deadline = time.monotonic() + 10
             while session.is_alive() and not session.wait(timeout):
                 stdout, stderr = session.consume_outputs(cmd)
                 # log.debug('out: %s', stdout)
                 # log.debug('err: %s', stderr)
                 cmd = ''
+                if time.monotonic() > deadline:
+                    self.fail(
+                        f'Timed out waiting for run_script. '
+                        f'stdout={stdout!r} stderr={stderr!r}'
+                    )
 
         log.debug(f'del_commands_file({fname})')
         del_commands_file(fname)

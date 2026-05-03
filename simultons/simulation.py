@@ -4,7 +4,7 @@ Simulation launches all the simultons
 
 import asyncio
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.background import BackgroundTask
@@ -12,7 +12,12 @@ import zmq
 import zmq.asyncio
 
 # ruff: noqa: I001
-from .globals import simulation_zspec, simulation_ztopic, module_version
+from .globals import (
+    find_free_port,
+    make_zspec,
+    simulation_ztopic,
+    module_version,
+)
 
 from . import (
     api_simulation,
@@ -25,7 +30,6 @@ from . import (
     SimultonResponse,
     Tags,
     Message,
-    load_yaml,
     setup_logging,
     shut_the_process,
 )
@@ -38,7 +42,6 @@ class Simulation:
     Simulation launcher
     """
 
-    _zspec = simulation_zspec
     _ztopic = simulation_ztopic
 
     def __init__(self) -> None:
@@ -53,7 +56,8 @@ class Simulation:
         self._state = SimulationState.INIT
         # start in paused
         self._rate = 0.0
-        # start zmq publisher - destroyed in on_shutdown
+        # process-specific ZMQ IPC endpoint - destroyed in on_shutdown
+        self._zspec = make_zspec()
         self._zcontext = zmq.asyncio.Context()
         self._zsocket = self._zcontext.socket(zmq.PUB)
         self._zsocket.bind(self._zspec)
@@ -61,12 +65,6 @@ class Simulation:
         # NOTE: do NOT use _simultons to iterate and communicate with simultons
         # instead use _zsocket to broadcast the update to all the simultons
         self._simultons: dict[int, SimultonProxy] = {}
-        settings = load_yaml('settings.yaml')
-        log.debug(f'settings: {settings}')
-        assert isinstance(settings, dict)
-        sim_settings = settings['simulation']
-        assert isinstance(sim_settings, dict)
-        self._next_simulton_port = sim_settings['first_simulton_port']
         return
 
     def to_response(self, port: int | None = None) -> SimulationResponse:
@@ -168,13 +166,19 @@ class Simulation:
         """
         Handle new simulton creation
         """
-        simulton = SimultonProxy(params.src_path, self._next_simulton_port)
+        port = find_free_port()
+        simulton = SimultonProxy(params.src_path, port, self._zspec)
         if not simulton.launch():
             raise ValueError(f'Bad path {params.src_path}')
         self._simultons[simulton.port] = simulton
-        self._next_simulton_port += 1
         # wait to hear from it...
-        await simulton.async_wait_until_reachable()
+        try:
+            await simulton.async_wait_until_reachable()
+        except Exception:
+            self._simultons.pop(simulton.port, None)
+            with suppress(Exception):
+                await simulton.shutdown()
+            raise
         return simulton.to_simulton_response()
 
 

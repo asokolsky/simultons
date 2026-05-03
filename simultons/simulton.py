@@ -25,7 +25,7 @@ from fastapi.responses import JSONResponse
 from pydantic import parse_obj_as
 from starlette.background import BackgroundTask
 
-from .globals import simulation_zspec, simulation_ztopic, module_version
+from .globals import make_zspec, simulation_ztopic, module_version
 from . import (
     SimulationState,
     SimulationResponse,
@@ -81,10 +81,13 @@ class Simulton:
             name = f'{type(self).__qualname__}@{hex(id(self))}'
         self._name = name
         # start zmq subscriber, will be destroyed in on_shutdown
+        from .fast_launcher import child_simulation_zspec  # noqa: PLC0415
+
+        zspec = child_simulation_zspec or make_zspec()
         self._zcontext = zmq.asyncio.Context()
         self._zsocket = self._zcontext.socket(zmq.SUB)
         self._zsocket.setsockopt(zmq.SUBSCRIBE, simulation_ztopic.encode())
-        self._zsocket.connect(simulation_zspec)
+        self._zsocket.connect(zspec)
 
         # map of instance ID to the instance itself
         self._instances: dict[str, Any] = {}
@@ -230,6 +233,12 @@ class Simulton:
         Simulton FastAPI app shutdown event handler
         """
         log.debug(f'on_shutdown {self}')
+        # cancel pending zmq recv tasks before closing socket to avoid
+        # asyncio exception callbacks from pending recv_string() calls
+        for task in list(self._bgtasks):
+            task.cancel()
+        if self._bgtasks:
+            await asyncio.gather(*self._bgtasks, return_exceptions=True)
         # close the zmq subscriber
         # https://zguide.zeromq.org/docs/chapter1/#Making-a-Clean-Exit
         # to avoid hanging infinitely

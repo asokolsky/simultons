@@ -11,6 +11,7 @@ from . import (
     rest_client,
     setup_logging,
 )
+from .globals import make_zspec
 
 log = setup_logging(__name__)
 
@@ -21,9 +22,14 @@ class SimultonProxy(Simulton):
     and is simulation's idea of simulton(s) which live in their own process.
     """
 
-    def __init__(self, source_path: str, port: int) -> None:
+    def __init__(
+        self, source_path: str, port: int, zspec: str | None = None
+    ) -> None:
         super().__init__()
-        self._launcher: FastLauncher | None = FastLauncher(source_path, port)
+        zspec = zspec or make_zspec()
+        self._launcher: FastLauncher | None = FastLauncher(
+            source_path, port, zspec
+        )
         self.description = ''
         self.endpoint = ''
         self.title = ''

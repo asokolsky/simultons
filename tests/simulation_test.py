@@ -18,6 +18,7 @@ from simultons import (
     SimultonClient,
     SimultonResponse,
     SimultonState,
+    find_free_port,
     load_yaml,
     setup_logging,
 )
@@ -61,7 +62,7 @@ class TestSimulation(unittest.IsolatedAsyncioTestCase):
         #
         log.info('asyncSetUp')
         self._client = SimulationClient()
-        self._client.set_up()
+        self._client.set_up(find_free_port())
 
         self._simulton_client: SimultonClient | None = None
         return

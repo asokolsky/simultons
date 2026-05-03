@@ -22,6 +22,7 @@ from . import (
     rest_client,
     wait_until_reachable,
 )
+from .globals import make_zspec
 from .logging import logging_config, setup_logging
 
 log = setup_logging(__name__)
@@ -83,9 +84,12 @@ class PipeWriter:
 redirect_stdout_stderr = False
 
 connection_to_parent: Connection | None = None
+child_simulation_zspec: str | None = None
 
 
-def launch_uvicorn(conn: Connection, host: str, port: int, path: Path) -> None:
+def launch_uvicorn(
+    conn: Connection, host: str, port: int, path: Path, zspec: str
+) -> None:
     """
     Start FastAPI uvicorn app.
     It is executed in the context of the child process.
@@ -93,8 +97,9 @@ def launch_uvicorn(conn: Connection, host: str, port: int, path: Path) -> None:
     https://bugfactory.io/articles/starting-and-stopping-uvicorn-in-the-background/
     https://github.com/fastapi/fastapi-cli/blob/main/src/fastapi_cli/cli.py#L172
     """
-    global connection_to_parent
+    global connection_to_parent, child_simulation_zspec
     connection_to_parent = conn
+    child_simulation_zspec = zspec
     if redirect_stdout_stderr:
         sys.stdout = PipeWriter(conn)
         sys.stderr = PipeWriter(conn)
@@ -126,16 +131,18 @@ class FastLauncher:
     FastAPI Service Launcher
     """
 
-    def __init__(self, path: str, port: int) -> None:
+    def __init__(self, path: str, port: int, zspec: str | None = None) -> None:
         """
         Constructor.
         path - to the python file which has FastAPI global app defined
+        zspec - ZMQ IPC endpoint of the simulation publisher
         """
         ctxt = get_context('spawn')
 
         self._host = '127.0.0.1'
         self._path = Path(path)
         self._port = port
+        zspec = zspec or make_zspec()
         self._conn, child_conn = ctxt.Pipe()
         self._process = ctxt.Process(
             name=f'{self._path.stem}-{port}',
@@ -145,6 +152,7 @@ class FastLauncher:
                 self._host,
                 self._port,
                 self._path,
+                zspec,
             ),
         )
         #
@@ -305,6 +313,14 @@ class FastLauncher:
         #
         res = True
         if self._process.exitcode is None:
+            res = self.wait_to_die(timeout)
+        if not res and self._process.exitcode is None:
+            log.debug(f'Terminating {self._process.pid}')
+            self._process.terminate()
+            res = self.wait_to_die(timeout)
+        if not res and self._process.exitcode is None:
+            log.debug(f'Killing {self._process.pid}')
+            self._process.kill()
             res = self.wait_to_die(timeout)
         #
         # get the child's stdout and stderr

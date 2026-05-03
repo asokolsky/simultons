@@ -8,7 +8,8 @@ from .logging import setup_logging, print_logging_tree, load_yaml
 from .arestc import async_rest_client
 from .restc import rest_client
 from .globals import (
-    simulation_zspec,
+    find_free_port,
+    make_zspec,
     simulation_ztopic,
     module_version,
     api_simulation,
@@ -50,8 +51,9 @@ __version__ = module_version
 
 __all__ = [
     # globals.py
+    'find_free_port',
+    'make_zspec',
     'simulation_ztopic',
-    'simulation_zspec',
     'api_simulation',
     'api_simultons',
     'api_simulton',

@@ -21,7 +21,6 @@ from . import (
     NewSimultonParams,
     SimulationClient,
     SimulationRequest,
-    SimulationResponse,
     SimultonClient,
     SimultonResponse,
     api_simulation,
@@ -63,18 +62,75 @@ def run_async(coro: Coroutine) -> concurrent.futures.Future:
 
 class SimultonsShell(cmd2.Cmd):
     def __init__(self, client: SimulationClient) -> None:
-        super().__init__(completekey='tab')
+        super().__init__(completekey='tab', allow_cli_args=False)
         self.prompt = '\n> '
         self._client = client
         self._simulton_client: dict[int, SimultonClient] = {}
         return
+
+    def _cache_simulton_client(
+        self, sim: SimultonResponse
+    ) -> SimultonClient | None:
+        if sim.port is None:
+            self.perror('Simulton response is missing a port')
+            return None
+        port = int(sim.port)
+        if port not in self._simulton_client:
+            self._simulton_client[port] = SimultonClient(sim)
+        return self._simulton_client[port]
+
+    def _refresh_simulton_clients(self) -> dict[int, SimultonResponse] | None:
+        sims = self._client.get_simultons()
+        if sims is None:
+            self.perror('Unable to retrieve simultons')
+            return None
+        for sim in sims.values():
+            self._cache_simulton_client(sim)
+        return {int(sim.port): sim for sim in sims.values() if sim.port}
+
+    def _latest_simulton_port(self) -> int | None:
+        if not self._simulton_client:
+            self._refresh_simulton_clients()
+        if not self._simulton_client:
+            self.perror('No simultons have been created')
+            return None
+        return next(reversed(self._simulton_client))
+
+    def _resolve_simulton_port(self, value: str, usage: str) -> int | None:
+        port = value.strip()
+        if port in {'latest', 'last'}:
+            return self._latest_simulton_port()
+        try:
+            return int(port)
+        except ValueError:
+            self.perror(usage)
+            return None
+
+    def _get_simulton_client(
+        self, value: str, usage: str
+    ) -> SimultonClient | None:
+        port = self._resolve_simulton_port(value, usage)
+        if port is None:
+            return None
+
+        simulton_client = self._simulton_client.get(port)
+        if simulton_client is not None:
+            return simulton_client
+
+        sim = self._client.get_simulton(port)
+        if sim is None:
+            self.perror(f'No simulton on port {port}')
+            return None
+        return self._cache_simulton_client(sim)
 
     def do_simulation_get(self, _: str) -> None:
         """
         Get the simulation
         """
         simulation = self._client.get_simulation()
-        assert isinstance(simulation, SimulationResponse)
+        if simulation is None:
+            self.perror('Unable to retrieve simulation')
+            return
         self.poutput(json.dumps(simulation.model_dump(), indent=2))
         return
 
@@ -87,7 +143,9 @@ class SimultonsShell(cmd2.Cmd):
             arg = SimulationRequest.model_validate_json(args)
             # self.poutput(json.dumps(arg.model_dump(), indent=2))
             simulation = self._client.put_simulation(arg)
-            assert isinstance(simulation, SimulationResponse)
+            if simulation is None:
+                self.perror('Unable to update simulation')
+                return
             self.poutput(json.dumps(simulation.model_dump(), indent=2))
 
         except ValidationError:
@@ -100,12 +158,21 @@ class SimultonsShell(cmd2.Cmd):
         """
         if not args:
             sims = self._client.get_simultons()
-            assert isinstance(sims, dict)
+            if sims is None:
+                self.perror('Unable to retrieve simultons')
+                return
             js = {k: v.model_dump() for k, v in sims.items()}
             self.poutput(json.dumps(js, indent=2))
         else:
-            sim = self._client.get_simulton(args)
-            assert isinstance(sim, SimultonResponse)
+            port = self._resolve_simulton_port(
+                args, 'Usage: simultons_get [<port>|latest]'
+            )
+            if port is None:
+                return
+            sim = self._client.get_simulton(port)
+            if sim is None:
+                self.perror(f'No simulton on port {port}')
+                return
             self.poutput(json.dumps(sim.model_dump(), indent=2))
         return
 
@@ -118,7 +185,9 @@ class SimultonsShell(cmd2.Cmd):
             arg = NewSimultonParams.model_validate_json(args)
             # self.poutput(json.dumps(arg.model_dump(), indent=2))
             res = self._client.post_simulton(arg)
-            assert isinstance(res, SimultonResponse)
+            if res is None:
+                self.perror('Unable to create simulton')
+                return
             message = f"""
 
 New simulton API: http://127.0.0.1:{res.port}{api_simulton}
@@ -129,113 +198,117 @@ Docs: http://127.0.0.1:{res.port}/docs
             self.pfeedback(message)
             self.poutput(json.dumps(res.model_dump(), indent=2))
             # save the SimultonClient for the newly created simulton
-            assert isinstance(res.port, int)
-            self._simulton_client[res.port] = SimultonClient(res)
+            self._cache_simulton_client(res)
 
         except ValidationError:
             self.perror(f"Error: '{args}' is not a NewSimultonParams.")
         return
 
-    @validate_call
-    def do_simulton_get(self, port: int) -> None:
+    def do_simulton_get(self, args: str) -> None:
         """
         Retrieve the simulton state using the saved SimultonClient
-        e.g. `simulton_get 9110`
+        e.g. `simulton_get 9110` or `simulton_get latest`
         """
-        simulton_client = self._simulton_client.get(port, None)
+        simulton_client = self._get_simulton_client(
+            args, 'Usage: simulton_get <port|latest>'
+        )
         if simulton_client is None:
-            self.perror(f'No simulton on port {port}')
-        else:
-            waitable = run_async(simulton_client.get_simulton())
-            res = waitable.result()
-            self.poutput(json.dumps(res.model_dump(), indent=2))
+            return
+        waitable = run_async(simulton_client.get_simulton())
+        res = waitable.result()
+        self.poutput(json.dumps(res.model_dump(), indent=2))
         return
 
     def do_simulton_new_item(self, args: str) -> None:
         """
         Add new item to the simulton collection
-        e.g. `simulton_new_item 9110 {"name": "clock-A", "latency": 0.1}`
+        e.g. `simulton_new_item latest {"name": "clock-A", "latency": 0.1}`
         """
         parts = args.split(' ', maxsplit=1)
         if len(parts) != 2:
-            self.perror('Usage: simulton_new_item <port> <new-item-json>')
+            self.perror(
+                'Usage: simulton_new_item <port|latest> <new-item-json>'
+            )
             return
         port_str, arg_str = parts
         try:
-            port = int(port_str)
-            simulton_client = self._simulton_client.get(port, None)
+            simulton_client = self._get_simulton_client(
+                port_str,
+                'Usage: simulton_new_item <port|latest> <new-item-json>',
+            )
             if simulton_client is None:
-                self.perror(f'No simulton on port {port}')
-            else:
-                arg = json.loads(arg_str)
-                waitable = run_async(simulton_client.new_item(arg))
-                res = waitable.result()
-                self.poutput(json.dumps(res, indent=2))
-        except ValueError:
-            self.perror('Usage: simulton_new_item <port> <new-item-json>')
-        return
-
-    @validate_call
-    def do_simulton_get_items(self, port: int) -> None:
-        """
-        Get all the items from the simulton collection
-        e.g. `simulton_get_items 9110`
-        """
-        simulton_client = self._simulton_client.get(port, None)
-        if simulton_client is None:
-            self.perror(f'No simulton on port {port}')
-        else:
-            waitable = run_async(simulton_client.get_items())
+                return
+            arg = json.loads(arg_str)
+            waitable = run_async(simulton_client.new_item(arg))
             res = waitable.result()
             self.poutput(json.dumps(res, indent=2))
+        except ValueError:
+            self.perror(
+                'Usage: simulton_new_item <port|latest> <new-item-json>'
+            )
+        return
+
+    def do_simulton_get_items(self, args: str) -> None:
+        """
+        Get all the items from the simulton collection
+        e.g. `simulton_get_items 9110` or `simulton_get_items latest`
+        """
+        simulton_client = self._get_simulton_client(
+            args, 'Usage: simulton_get_items <port|latest>'
+        )
+        if simulton_client is None:
+            return
+        waitable = run_async(simulton_client.get_items())
+        res = waitable.result()
+        self.poutput(json.dumps(res, indent=2))
         return
 
     @validate_call
     def do_simulton_get_item(self, args: str) -> None:
         """
         Get an item from the simulton collection
-        e.g. `simulton_get_item 9110 foo`
+        e.g. `simulton_get_item latest foo`
         """
         parts = args.split(' ', maxsplit=1)
         if len(parts) != 2:
-            self.perror('Usage: simulton_get_item <port> <item-id>')
+            self.perror('Usage: simulton_get_item <port|latest> <item-id>')
             return
         port_str, key = parts
         try:
-            port = int(port_str)
-            simulton_client = self._simulton_client.get(port, None)
+            simulton_client = self._get_simulton_client(
+                port_str, 'Usage: simulton_get_item <port|latest> <item-id>'
+            )
             if simulton_client is None:
-                self.perror(f'No simulton on port {port}')
-            else:
-                waitable = run_async(simulton_client.get_item(key))
-                res = waitable.result()
-                self.poutput(json.dumps(res, indent=2))
+                return
+            waitable = run_async(simulton_client.get_item(key))
+            res = waitable.result()
+            self.poutput(json.dumps(res, indent=2))
         except ValueError:
-            self.perror('Usage: simulton_get_item <port> <item-id>')
+            self.perror('Usage: simulton_get_item <port|latest> <item-id>')
         return
 
     @validate_call
     def do_simulton_del_item(self, args: str) -> None:
         """
         Delete an item from the simulton collection
-        e.g. `simulton_del_item 9110 foo`
+        e.g. `simulton_del_item latest foo`
         """
         parts = args.split(' ', maxsplit=1)
         if len(parts) != 2:
-            self.perror('Usage: simulton_del_item <port> <item-id>')
+            self.perror('Usage: simulton_del_item <port|latest> <item-id>')
             return
         port_str, key = parts
         try:
-            port = int(port_str)
-            simulton_client = self._simulton_client.get(port, None)
+            simulton_client = self._get_simulton_client(
+                port_str, 'Usage: simulton_del_item <port|latest> <item-id>'
+            )
             if simulton_client is None:
-                self.perror(f'No simulton on port {port}')
-            else:
-                waitable = run_async(simulton_client.del_item(key))
-                res = waitable.result()
-                self.poutput(json.dumps(res, indent=2))
+                return
+            waitable = run_async(simulton_client.del_item(key))
+            res = waitable.result()
+            self.poutput(json.dumps(res, indent=2))
         except ValueError:
-            self.perror('Usage: simulton_del_item <port> <item-id>')
+            self.perror('Usage: simulton_del_item <port|latest> <item-id>')
         return
 
 
@@ -300,6 +373,7 @@ async def main() -> int:
         print(module_version)
         return 0
 
+    asyncio.get_running_loop().set_debug(args.verbose)
     setup_logging(__name__, logging.NOTSET, args.logging_config)
     # print_logging_tree()
 
@@ -314,7 +388,10 @@ Docs: {url}/docs"""
             if args.apply is not None:
                 to_apply = load_yaml(args.apply)
                 if to_apply is not None:
-                    await client.load_simultons(to_apply)
+                    simulton_clients = await client.load_simultons(to_apply)
+                    for simulton_client in simulton_clients:
+                        if simulton_client is not None:
+                            await simulton_client.close()
 
             SimultonsShell(client).cmdloop(intro=intro)
         except KeyboardInterrupt:
@@ -323,4 +400,4 @@ Docs: {url}/docs"""
 
 
 if __name__ == '__main__':
-    sys.exit(asyncio.run(main(), debug=True))
+    sys.exit(asyncio.run(main()))

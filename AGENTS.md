@@ -8,13 +8,20 @@ Version: `0.2.0` (keep in sync between `pyproject.toml` and `simultons/globals.p
 
 ## Architecture in One Paragraph
 
-A **Simulation** process (port 9100 by default) is the coordinator: a FastAPI service and a ZeroMQ IPC publisher (`ipc:///tmp/sss`, topic `simulation`). It launches **Simulton** child processes (starting at port 9110, incrementing by 1). Each Simulton is its own FastAPI service that subscribes to the Simulation's ZeroMQ feed. A `SimulationClient` Python object wraps HTTP calls to both layers; a `SimultonClient` wraps calls to an individual simulton. The interactive REPL (`SimultonsShell`, built on `cmd2`) ties it together at the top level.
+A **Simulation** process (port 9100 by default) is the coordinator: a FastAPI
+service and a ZeroMQ IPC publisher (`ipc:///tmp/simultons-{pid}`, topic
+`simulation`). It launches **Simulton** child processes, each on a free port
+chosen at creation time. Each Simulton is its own FastAPI service that
+subscribes to the Simulation's ZeroMQ feed. A `SimulationClient` Python object
+wraps HTTP calls to both layers; a `SimultonClient` wraps calls to an individual
+simulton. The interactive REPL (`SimultonsShell`, built on `cmd2`) ties it
+together at the top level.
 
 ## Key Files
 
 | Path | Purpose |
 |------|---------|
-| `simultons/globals.py` | Constants: ZeroMQ spec/topic, API path prefixes, `module_version` |
+| `simultons/globals.py` | Constants and helpers: ZeroMQ topic, API path prefixes, `module_version`, `make_zspec()` (ZMQ IPC endpoint), `find_free_port()` |
 | `simultons/simulation.py` | `Simulation` class + FastAPI `app`; coordinator process |
 | `simultons/simulton.py` | `Simulton` base class; each simulton process inherits from this |
 | `simultons/simulton_proxy.py` | `SimultonProxy` — simulation-side handle to a child simulton process |
@@ -42,7 +49,7 @@ All path constants live in `simultons/globals.py`. Always use the constant, neve
 | _(no constant)_ | `/api/v1/simultons/{id}` | GET | Get one simulton by port |
 | `api_simulton` | `/api/v1/simulton` | GET, PUT | Per-simulton self-description (on each simulton's port) |
 | `api_clocks` | `/api/v1/clocks` | GET, POST, DELETE `/{id}` | Clock simulton items |
-| `api_elevators` | `/api/v1/elevators` | GET, POST | Elevator simulton items |
+| `api_elevators` | `/api/v1/elevators` | GET, POST, DELETE `/{id}` | Elevator simulton items |
 
 Interactive docs are served at `http://127.0.0.1:<port>/docs` on every process.
 
@@ -62,7 +69,7 @@ mise mypy                    # type-check
 mise clean                   # remove .venv, caches, uv.lock
 ```
 
-Equivalent `make` targets also exist (`make tests`, `make lint`, etc.).
+There is no Makefile; use the `mise` tasks above.
 
 ## Running Tests
 
@@ -70,7 +77,7 @@ Equivalent `make` targets also exist (`make tests`, `make lint`, etc.).
 uv run -m unittest -v tests/*_test.py tests/building/*_test.py
 ```
 
-If port 9100 is already in use: `lsof -i :9100` to find and kill the stale process.
+Tests use `find_free_port()` to allocate ephemeral ports at setup time, so concurrent test runs do not conflict.
 
 ### Two test patterns
 
@@ -85,17 +92,27 @@ with TestClient(app) as client:
     self.assertEqual(response.status_code, 200)
 ```
 
-**Pattern B — `IsolatedAsyncioTestCase` + `SimultonProxy` or `SimulationClient` (real subprocess, real port):** Use for integration tests that exercise inter-process communication. See `tests/building/simulton_test.py` (single simulton) and `tests/simulation_test.py` (full stack).
+**Pattern B — `IsolatedAsyncioTestCase` + `SimultonProxy` or `SimulationClient` (real subprocess, real port):** Use for integration tests that exercise inter-process communication. See `tests/building/simulton_test.py` (single simulton) and `tests/simulation_test.py` (full stack). Always pass `find_free_port()` so concurrent runs don't clash.
 
 ```python
+from simultons import find_free_port
+
 class TestFoo(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self._simulton = SimultonProxy('simultons/building/elevator.py', 9100)
+        self._simulton = SimultonProxy('simultons/building/elevator.py', find_free_port())
         assert self._simulton.launch()
         assert self._simulton.wait_until_reachable()
 
     async def asyncTearDown(self):
         await self._simulton.shutdown()
+```
+
+For full-stack tests using `SimulationClient`, pass both ports:
+
+```python
+    async def asyncSetUp(self):
+        self._client = SimulationClient()
+        self._client.set_up(find_free_port())
 ```
 
 Always use `assertEqual(response.status_code, N)` — never `assertTrue(response.status_code, N)` (the second arg to `assertTrue` is a message, not an expected value).
@@ -118,15 +135,17 @@ Always use `assertEqual(response.status_code, N)` — never `assertTrue(response
 
 ## Ports & Config
 
-Defaults from `settings.yaml`:
+Defaults from `settings.yaml` (used by the CLI; tests override the simulation
+port with `find_free_port()`):
 
 | Service | Default Port |
 |---------|-------------|
 | Simulation | 9100 |
-| First simulton | 9110 |
-| Subsequent simultons | 9111, 9112, … |
+| Simultons | dynamic free ports |
 
-ZeroMQ IPC socket: `ipc:///tmp/sss`
+The ZeroMQ IPC socket is process-specific: `ipc:///tmp/simultons-{pid}` where `{pid}` is the simulation process's PID. Use `make_zspec()` from `simultons/globals.py` to generate the endpoint string — never hardcode the path. The socket is created by `Simulation.__init__` and passed down to simulton child processes via `FastLauncher`.
+
+`SimulationClient.set_up(port)` accepts an optional simulation port override; omit it to use `settings.yaml`. Each simulton gets its own port from `find_free_port()` at creation time inside `Simulation.create_simulton()`, so simulton ports are always collision-free regardless of the base port.
 
 Configurable keys in `settings.yaml`:
 
@@ -134,15 +153,16 @@ Configurable keys in `settings.yaml`:
 |-----|---------|---------|
 | `simulation.source` | `simultons/simulation.py` | Path to the simulation module |
 | `simulation.port` | `9100` | Simulation process port |
-| `simulation.first_simulton_port` | `9110` | Port assigned to first simulton |
-| `simultons.first_port` | `9110` | Same as above (simulton-side view) |
+| `simulation.first_simulton_port` | `9110` | Legacy key; not used by current dynamic port allocation |
+| `simultons.first_port` | `9110` | Legacy key; not used by current dynamic port allocation |
 
 Host is always `127.0.0.1` — remote or `0.0.0.0` binding is not supported.
 
 ## Common Gotchas
 
 - `module_version` must be kept in sync between `pyproject.toml` and `simultons/globals.py`.
-- `theSimulation` in `simulation.py` is intentionally initialized lazily (not at import time) to avoid creating network resources on `import`.
+- `Simulation` is initialized lazily inside the FastAPI lifespan (not at import time) to avoid creating network resources on `import`.
 - The `SimulationClient` context manager (`async with`) handles subprocess lifecycle; always use it or call `set_up()`/`tear_down()` explicitly.
 - ZeroMQ sockets must have `LINGER=0` set before closing to avoid hangs on shutdown (already done in `Simulation.on_shutdown`).
+- Cancel pending background tasks (stored in `_bgtasks`) before closing ZMQ sockets in `on_shutdown` — otherwise `recv_string()` raises an exception in the async callback chain.
 - Never import `app` or a concrete simulton class (e.g. `ClocksSimulton`) at the package level in `__init__.py` — doing so instantiates a FastAPI app on import, which opens ports and breaks tests.

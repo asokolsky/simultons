@@ -38,22 +38,24 @@ The building has multiple floors and >=1 elevator shaft(s).  Each floor has a [f
 
 ## Playing with it
 
-For now, the play is limited to running unit tests - see below.
+For now, the main ways to play are running unit tests and launching the
+interactive REPL - see below.
 
 ## Prerequisites and Toolchain
 
-* python
+* Python 3.13
 * [mise](https://mise.jdx.dev/getting-started.html).
 * Establish trust: `mise trust`.
-* Install the rest of the toolchain with `mise install` - you can expect to see complain about `mypy`.
+* Install `uv` with `mise install`.
+* Install Python dependencies with `uv sync --group dev`.
 * I also had to `sudo apt install libncurses-dev`
 
-These are installed by `mise`:
+The toolchain uses:
 * [uv](https://github.com/astral-sh/uv)
 * [ruff](https://github.com/astral-sh/ruff)
 * [mypy](https://mypy.readthedocs.io/)
 
-By now you should be able to run regressiont ests:
+By now you should be able to run regression tests:
 ```sh
 mise tests
 ```
@@ -71,21 +73,22 @@ brew install zeromq
 sudo apt-get install libzmq3-dev
 ```
 
-To install python library for 0mq:
+The Python ZeroMQ binding is declared in `pyproject.toml` and installed by
+`uv sync`:
 ```sh
-uv add zmq
+uv sync
 ```
 
 To verify the install:
 ```
 > python
-Python 3.10.14 (main, Mar 19 2024, 21:46:16) [Clang 15.0.0 (clang-1500.3.9.4)] on darwin
+Python 3.13.x ...
 Type "help", "copyright", "credits" or "license" for more information.
 >>> import zmq
 >>> print(f"Current libzmq version is {zmq.zmq_version()}")
 Current libzmq version is 4.3.5
 >>> print(f"Current  pyzmq version is {zmq.__version__}")
-Current  pyzmq version is 26.2.0
+Current  pyzmq version is 27.0.0
 >>> exit()
 ```
 
@@ -168,15 +171,11 @@ watch -c -n 0.1 pstree -p <pid> -g 3
 
 If you get
 ```
-[Errno 98] error while attempting to bind on address ('127.0.0.1', 9000): address already in use
+[Errno 98] error while attempting to bind on address ('127.0.0.1', 9100): address already in use
 ```
-Identify the pid of the process using port 9000 and kill it:
+Identify the pid of the process using that port and kill it:
 ```sh
-lsof -i :9000
-```
-Alternatively, to find out who binds port 5556:
-```sh
-sudo lsof -i4 |grep LISTEN|grep 5556
+lsof -i :9100
 ```
 
 To find out if `fastapi` is running:

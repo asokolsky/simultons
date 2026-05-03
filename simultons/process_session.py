@@ -21,9 +21,11 @@ Sample usage:
 
 import asyncio
 import os
+import signal
 import subprocess
 import time
 from collections import deque
+from contextlib import suppress
 from pathlib import Path
 from types import TracebackType
 from typing import IO, Any, Self
@@ -65,6 +67,7 @@ class ProcessSession:
             stderr=subprocess.PIPE,
             text=True,
             bufsize=1,
+            start_new_session=True,
         )
         assert self.popen is not None
         log.debug(f'pid:{self.popen.pid} args:{self.popen.args!r}')
@@ -90,14 +93,19 @@ class ProcessSession:
             # close the pipes
             if self.popen.stdin is not None:
                 self.popen.stdin.close()
+            # wait for the process to complete
+            if not self.wait(8.0):
+                with suppress(ProcessLookupError):
+                    os.killpg(self.popen.pid, signal.SIGTERM)
+                if not self.wait(2.0):
+                    with suppress(ProcessLookupError):
+                        os.killpg(self.popen.pid, signal.SIGKILL)
+                    self.wait(2.0)
             if self.popen.stdout is not None:
                 self.popen.stdout.close()
             if self.popen.stderr is not None:
                 self.popen.stderr.close()
-            # wait for the process to complete
-            if not self.wait(1.0):
-                self.popen.terminate()
-                self.popen = None
+            self.popen = None
         return
 
     def consume_outputs(self, line: str) -> tuple[str, str]:
