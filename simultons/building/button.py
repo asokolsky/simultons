@@ -71,10 +71,13 @@ class Button:
     def annotated_label(self) -> str:
         """
         Return the label representing enabled/disabled status
+
+        State	    annotated_label
+        enabled	    3
+        disabled    _3_
+
         """
-        if self._enabled:
-            return self._label
-        return f'_{self._label}_'
+        return self._label if self._enabled else f'_{self._label}_'
 
     def __repr__(self) -> str:
         """
@@ -126,11 +129,18 @@ class ButtonWithLed(Button):
     def annotated_label(self) -> str:
         """
         Return the label representing led on/of, enabled/disabled status
+
+        State	                    annotated_label
+        enabled, not clicked	    3
+        disabled, not clicked	    _3_
+        enabled, clicked / LED on	*3*
+        disabled, clicked / LED on	*_3_*
+
+        The normal successful click path is:
+        enabled button -> click -> LED turns on -> button disables itself, so tests expect *_3_*.
         """
         label = super().annotated_label
-        if self._led_on:
-            label = '*' + label + '*'
-        return label
+        return f'*{label}*' if self._led_on else label
 
     def __repr__(self) -> str:
         """
