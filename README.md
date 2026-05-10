@@ -51,11 +51,13 @@ interactive REPL - see below.
 * I also had to `sudo apt install libncurses-dev`
 
 The toolchain uses:
+
 * [uv](https://github.com/astral-sh/uv)
 * [ruff](https://github.com/astral-sh/ruff)
 * [mypy](https://mypy.readthedocs.io/)
 
 By now you should be able to run regression tests:
+
 ```sh
 mise tests
 ```
@@ -65,22 +67,27 @@ mise tests
 Follow [documentation](https://zeromq.org/download/) to install:
 
 * on MacOS:
+
 ```sh
 brew install zeromq
 ```
+
 * on Linux:
+
 ```sh
 sudo apt-get install libzmq3-dev
 ```
 
 The Python ZeroMQ binding is declared in `pyproject.toml` and installed by
 `uv sync`:
+
 ```sh
 uv sync
 ```
 
 To verify the install:
-```
+
+```txt
 > python
 Python 3.13.x ...
 Type "help", "copyright", "credits" or "license" for more information.
@@ -139,11 +146,13 @@ reveals the packages `FastAPI` and `pyzmq` rely upon:
 ## Unit Tests
 
 To run all:
+
 ```sh
 mise tests
 ```
 
 To run one unit test file:
+
 ```sh
 uv run -m unittest tests/simulation_test.py
 ```
@@ -159,10 +168,13 @@ To watch the simulton processes:
 1. use `echo $$` to identify the pid of the shell;
 2. run, e.g. `mise tests`
 3. in another shell
+
 ```sh
 watch -c -n 0.1 pstree -p <pid> -Uta
 ```
+
 or on MacOS:
+
 ```sh
 watch -c -n 0.1 pstree -p <pid> -g 3
 ```
@@ -170,15 +182,19 @@ watch -c -n 0.1 pstree -p <pid> -g 3
 ## Troubleshooting
 
 If you get
-```
+
+```txt
 [Errno 98] error while attempting to bind on address ('127.0.0.1', 9100): address already in use
 ```
+
 Identify the pid of the process using that port and kill it:
+
 ```sh
 lsof -i :9100
 ```
 
 To find out if `fastapi` is running:
+
 ```sh
 ps ax|grep fastapi
 ```
